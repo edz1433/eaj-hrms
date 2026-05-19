@@ -1,0 +1,86 @@
+@extends('layouts.master')
+
+@section('body')
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-3">
+      <div class="sticky-top mb-3">
+        <div class="card">
+          <div class="card-header">
+            <div class="btn-group btn-block">
+                <a href="{{ route('eventIndex') }}" class="btn bg-secondary "><i class="fas fa-calendar"></i> EVENT</a>
+                <a href="{{ route('showReport') }}" class="btn bg-success1 "><i class="fas fa-file-pdf"></i> REPORTS</a>
+            </div>
+          </div>
+          <div class="card-body">
+           
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-9">
+        <div class="card card-primary">
+            <form class="form-horizontal add-form p-2" action="{{ route('searchReport') }}" method="POST">
+                @csrf
+                <div class="form-group row mtop">
+                    {{-- Events --}}
+                    <div class="col-md-3 col-sm-12">
+                        <label class="badge badge-secondary lbel">Events</label><br>
+                        <select class="form-control form-control-sm select2" name="eventid" required>
+                            @foreach($events as $event)
+                                <option value="{{ $event->id }}"
+                                    @if(isset($selectedEvent) && $selectedEvent && $event->id == $selectedEvent->id) selected @endif>
+                                    {{ ucfirst($event->title) }}
+                                </option>
+                            @endforeach
+                        </select>                                    
+                    </div>
+            
+                    {{-- Campus --}}
+                    <div class="col-md-3 col-sm-12">
+                        <label class="badge badge-secondary lbel">Campus</label><br>
+                        <select class="form-control form-control-sm select2 update-field" name="campusid" required>
+                            <option value="0" @if(isset($campusid) && $campusid == 0) selected @endif>All</option>
+                            @foreach ($campus as $cp)
+                                <option value="{{ $cp->id }}" @if(isset($campusid) && $campusid == $cp->id) selected @endif>
+                                    {{ $cp->campus_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+            
+                    {{-- Employee Status --}}
+                    <div class="col-md-3 col-sm-12">
+                        <label class="badge badge-secondary lbel">Employee Status</label><br>
+                        <select class="form-control form-control-sm select2 update-field" name="statusid" required>
+                            <option value="0" @if(isset($statusid) && $statusid == 0) selected @endif>All</option>
+                            @foreach ($status as $st)
+                                <option value="{{ $st->id }}" @if(isset($statusid) && $statusid == $st->id) selected @endif>
+                                    {{ $st->status_name }}
+                                </option>
+                            @endforeach
+                        </select>                                    
+                    </div>
+            
+                    {{-- Submit Button --}}
+                    <div class="col-md-3 col-sm-12">
+                        <button class="btn btn-success btn-sm btn-block" style="margin-top: 21px;">
+                            <i class="fas fa-file-pdf"></i> Generate
+                        </button>                              
+                    </div>
+                </div>
+            </form>
+            
+            {{-- Iframe --}}
+            <iframe class="m-2"
+                src="{{ isset($eventid, $campusid, $statusid) ? route('reportGenrate', ['eventid' => $eventid, 'campusid' => $campusid, 'statusid' => $statusid]) : '' }}"
+                width="98.5%" height="800px">
+            </iframe>
+            
+        </div>
+    </div>
+  </div>
+  <!-- /.row -->
+</div><!-- /.container-fluid -->
+            
+@endsection

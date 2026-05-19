@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(php artisan *)",
+      "Bash(composer show *)",
+      "Bash(php -r 'try { $pdo = new PDO\\('\\\\''mysql:host='\\\\''.getenv\\('\\\\''DB_HOST'\\\\''\\).'\\\\'';port='\\\\''.getenv\\('\\\\''DB_PORT'\\\\''\\), getenv\\('\\\\''DB_USERNAME'\\\\''\\), getenv\\('\\\\''DB_PASSWORD'\\\\''\\)\\); echo $pdo->query\\('\\\\''SELECT VERSION\\(\\)'\\\\''\\)->fetchColumn\\(\\); } catch\\(Exception $e\\) { echo $e->getMessage\\(\\); }')",
+      "Bash(mysql -u root -h 127.0.0.1 -P 3306 -e \"SELECT VERSION\\(\\);\")",
+      "Bash(grep \"^use App\\\\\\\\\\\\\\\\Http\\\\\\\\\\\\\\\\Controllers\\\\\\\\\\\\\\\\\" \"c:/EAJ SYSTEMS/hrms/routes/web.php\")",
+      "Bash(grep \"^use App\\\\\\\\Http\\\\\\\\Controllers\\\\\\\\\" \"c:/EAJ SYSTEMS/hrms/routes/web.php\")",
+      "Bash(xargs grep *)",
+      "Bash(npm install *)",
+      "Bash(node -e ' *)",
+      "Bash(composer dump-autoload *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\edzav\\.claude\\projects\\c--EAJ-SYSTEMS-hrms\\memory"
+    ]
+  }
+}

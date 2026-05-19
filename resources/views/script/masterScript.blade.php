@@ -1,0 +1,478 @@
+{{-- All JS libraries are bundled via Vite (resources/js/app.js) --}}
+
+{{-- @include('script.dashboardChart') --}}
+{{-- Notification --}}
+<script>
+  function showColor(element) {
+    var color = element.getAttribute('data-color');
+
+    document.getElementById('bg_color').value = color;
+
+    document.getElementById('submit-bg').className = 'btn ' + color + ' btn-sm';
+  }
+</script>
+@if(request()->is('event*') || request()->is('dashboard'))
+<script>
+  $(function () {
+    function ini_events(ele) {
+      ele.each(function () {
+        var eventObject = {
+          title: $.trim($(this).text())
+        }
+
+        $(this).data('eventObject', eventObject)
+
+        $(this).draggable({
+          zIndex: 1070,
+          revert: true,
+          revertDuration: 0
+        })
+      })
+    }
+
+    ini_events($('#external-events div.external-event'))
+
+    var Calendar = FullCalendar.Calendar;
+    var Draggable = FullCalendar.Draggable;
+
+    var containerEl = document.getElementById('external-events');
+    var checkbox = document.getElementById('drop-remove');
+    var calendarEl = document.getElementById('calendar');
+
+    new Draggable(containerEl, {
+      itemSelector: '.external-event',
+      eventData: function (eventEl) {
+        return {
+          title: eventEl.innerText,
+          backgroundColor: window.getComputedStyle(eventEl, null).getPropertyValue('background-color'),
+          borderColor: window.getComputedStyle(eventEl, null).getPropertyValue('background-color'),
+          textColor: window.getComputedStyle(eventEl, null).getPropertyValue('color'),
+        };
+      }
+    });
+
+    var calendar = new Calendar(calendarEl, {
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      },
+      themeSystem: 'bootstrap',
+
+      events: function (fetchInfo, successCallback, failureCallback) {
+        fetch("{{ route('eventShow') }}")
+          .then(response => response.json())
+          .then(data => {
+            const events = data.map(event => {
+              const startDate = new Date(event.start);
+              const hours = startDate.getHours();
+              const minutes = startDate.getMinutes().toString().padStart(2, '0');
+              const ampm = hours >= 12 ? 'PM' : 'AM';
+              const hour12 = hours % 12 || 12;
+              const timeFormatted = `${hour12}:${minutes} ${ampm} `;
+              
+              const isSingle = !event.end;
+
+              return {
+                title: event.title,
+                timeLabel: isSingle ? timeFormatted : null,
+                start: event.start,
+                end: event.end || null,
+                allDay: false,
+                backgroundColor: '#0073b7',
+                borderColor: '#0073b7',
+              };
+            });
+            successCallback(events);
+          })
+          .catch(error => {
+            console.error('Error loading events:', error);
+            failureCallback(error);
+          });
+      },
+
+      eventContent: function (arg) {
+        const event = arg.event;
+        const time = event.extendedProps.timeLabel;
+        const title = event.title;
+        const eventColor = event.backgroundColor || '#0073b7';  // Default to blue if no color is set
+
+        let html = '';
+
+        // Add the blue dot at the start of the title
+        html += `<span class="fc-event-dot" style="width: 10px; height: 10px; background-color: ${eventColor}; border-radius: 50%; margin-right: 5px;"></span>`;
+
+        if (time) {
+          html += `<div class="fc-time-label">${time}</div>`;
+        }
+        html += `<div class="fc-event-title">${title}</div>`;
+
+        return { html };
+      },
+
+      editable: true,
+      droppable: true,
+      drop: function (info) {
+        if (checkbox.checked) {
+          info.draggedEl.parentNode.removeChild(info.draggedEl);
+        }
+
+        // Handle the drop event
+        const eventObject = $(info.draggedEl).data('eventObject');
+        
+        // Add the dropped event to the calendar
+        calendar.addEvent({
+          title: eventObject.title,
+          start: info.date,
+          backgroundColor: eventObject.backgroundColor,
+          borderColor: eventObject.borderColor,
+          textColor: eventObject.textColor,
+        });
+      }
+    });
+
+    calendar.render();
+
+    var currColor = '#3c8dbc';
+
+    $('#color-chooser > li > a').click(function (e) {
+      e.preventDefault()
+      currColor = $(this).css('color')
+      $('#add-new-event').css({
+        'background-color': currColor,
+        'border-color': currColor
+      })
+    })
+
+    $('#add-new-event').click(function (e) {
+      e.preventDefault()
+      var val = $('#new-event').val()
+      if (val.length == 0) {
+        return
+      }
+
+      var event = $('<div />')
+      event.css({
+        'background-color': currColor,
+        'border-color': currColor,
+        'color': '#fff'
+      }).addClass('external-event')
+      event.text(val)
+      $('#external-events').prepend(event)
+
+      ini_events(event)
+      $('#new-event').val('')
+    })
+  })
+</script>
+@endif
+<script>
+    document.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+    });
+
+    $(function () {
+        @if(Session::has('error'))
+        toastr.options = {
+                "closeButton":true,
+                "progressBar":true,
+                'positionClass': 'toast-bottom-right'
+            }
+            toastr.error("{{ session('error') }}")
+        @endif
+        
+        @if(Session::has('error1'))
+            toastr.options = {
+                "closeButton":true,
+                "progressBar":true,
+                'positionClass': 'toast-bottom-center'
+            }
+            toastr.error("{{ session('error1') }}")
+        @endif
+
+        @if(Session::has('success'))
+            toastr.options = {
+                "closeButton":true,
+                "progressBar":true,
+                'positionClass': 'toast-bottom-right'
+            }
+            toastr.success("{{ session('success') }}")
+        @endif
+
+        @if($errors->any())
+                var errorMessage = "";
+                @foreach($errors->all() as $error)
+                    errorMessage += "{{ $error }}" + "<br>";
+                @endforeach
+                toastr.options = {
+                    "closeButton": true,
+                    "progressBar": true,
+                    "positionClass": "toast-bottom-right"
+                };
+                toastr.error(errorMessage);
+        @endif
+
+        $("#leaveHistory").DataTable({
+            "responsive": false,
+            "lengthChange": false, 
+            "autoWidth": true,
+            order: [[1, 'desc']],
+            //"buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"]
+        }).buttons().container().appendTo('.col-md-6:eq(0)');
+
+        $("#example1").DataTable({
+            "responsive": false,
+            "lengthChange": false, 
+            "autoWidth": true,
+            //"buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"]
+
+        }).buttons().container().appendTo('#example1_wrapper .col-md-6:eq(0)');
+
+        // $("#example1").DataTable({
+        //     "responsive": false,
+        //     "lengthChange": false, // Removes the "Show Entries" dropdown
+        //     "autoWidth": true,
+        //     "searching": true, // Hides the search input
+        //     "paging": true, // Enables pagination
+        //     "dom": '<"top">rt<"bottom"p><"clear">', // Pagination only at the bottom
+        //     "pageLength": 10, // Sets the number of rows per page to 9
+        //     //"buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"]
+        // }).buttons().container().appendTo('#example1_wrapper .col-md-6:eq(0)');
+
+        $("#example2").DataTable({
+            "responsive": false,
+            "lengthChange": true, 
+            "autoWidth": true,
+            //"buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"]
+
+        }).buttons().container().appendTo('#example1_wrapper .col-md-6:eq(0)');
+
+        $("#example3").DataTable({
+            "responsive": false,
+            "lengthChange": false, 
+            "autoWidth": false,
+            // "buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"]
+
+        }).buttons().container().appendTo('#example3_wrapper .col-md-6:eq(0)');
+
+        $('.select2').select2()
+    });
+   
+</script>
+<script>
+    history.pushState(null, null, location.href);
+    window.onpopstate = function () {
+        history.go(1);
+    };
+</script>
+
+<script>
+    $(document).ready(function() {
+        let rowCount = 3;
+
+        $('#addRow').click(function() {
+            let newRow = `
+                <div class="form-group col-md-8 row${rowCount}">
+                    <input type="text" name="mfo[]" class="form-control form-control-sm" placeholder="Enter MFO" required>
+                </div>
+                <div class="form-group col-md-3 row${rowCount}">
+                    <input type="number" name="percent[]" class="form-control form-control-sm" placeholder="Percent" required>
+                </div>
+                <div class="form-group col-md-1 row${rowCount}">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow('row${rowCount}')"><i class="fas fa-times"></i></button>
+                </div>
+            `;
+            $('#newrow').append(newRow);
+            rowCount++;
+        });
+    });
+
+    function deleteRow(rowClass) {
+        $('.' + rowClass).remove();
+    }
+</script>
+@if(request()->is('pds/work-experience*') || request()->is('pds/voluntary-work*') || request()->is('pds/learning-dev*') || request()->is('dtr/dtr-logs*'))
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const incDate1 = document.getElementById('inc_date1');
+        const incDate2 = document.getElementById('inc_date2');
+
+        function updateDate2MinDate() {
+            const date1Value = incDate1.value;
+            if (date1Value) {
+                const minDate = new Date(date1Value).toISOString().split('T')[0];
+                incDate2.setAttribute('min', minDate);
+                incDate2.value = '';
+                if (incDate2.value && new Date(incDate2.value) < new Date(minDate)) {
+                    incDate2.value = '';
+                } else {
+
+                }
+            } else {
+                incDate2.removeAttribute('min');
+            }
+        }
+
+        function validateDateRange() {
+            const date1Value = incDate1.value;
+            const date2Value = incDate2.value;
+
+            if (date1Value && date2Value) {
+                if (new Date(date1Value) > new Date(date2Value)) {
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+            return true;
+        }
+
+        incDate1.addEventListener('change', function() {
+            updateDate2MinDate();
+            validateDateRange();
+        });
+
+        incDate2.addEventListener('change', validateDateRange);
+    });
+</script>
+@endif
+<script>
+$(document).ready(function() {
+
+    let offset = 10;   // first 10 already loaded in the blade
+    let loading = false;
+    let stopLoading = false;
+
+    function loadMoreNotifications() {
+
+        if (loading || stopLoading) return;
+
+        loading = true;
+
+        $.ajax({
+            url: '{{ route("notificationload") }}',
+            type: "GET",
+            data: { offset: offset },
+            beforeSend: function() {
+                loading = true;
+            }
+        })
+        .done(function(data) {
+
+            // No more notifications
+            if (data.stop === true || data.html === "") {
+                stopLoading = true;
+                loading = false;
+                return;
+            }
+
+            // Append new notifications
+            $('#notifications-container').append(data.html);
+
+            // Increase offset by 10
+            offset = data.nextOffset;
+
+            loading = false;
+        })
+        .fail(function() {
+            console.log("Error loading notifications");
+            loading = false;
+        });
+    }
+
+    // Infinite Scroll inside the dropdown
+    $('.dropdown-menu').on('scroll', function() {
+
+        let menu = $(this);
+
+        if (menu.scrollTop() + menu.innerHeight() >= this.scrollHeight - 5) {
+            loadMoreNotifications();
+        }
+
+    });
+
+});
+</script>
+<script>
+$(document).ready(function () {
+    $('.btn-status-with-comment').on('click', function () {
+        const prnumber = $(this).data('prnumber');
+        const stat = $(this).data('stat');
+        const label = $(this).data('label');
+
+        Swal.fire({
+            title: label + ' Reason',
+            input: 'textarea',
+            inputLabel: 'Please enter a reason for "' + label + '"',
+            inputPlaceholder: 'Type your reason here...',
+            showCancelButton: true,
+            confirmButtonText: 'Submit',
+            cancelButtonText: 'Dismiss',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'A reason is required!';
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = $('<form>', {
+                    method: 'POST',
+                    action: "{{ route('updateStat') }}"
+                });
+
+                form.append($('<input>', {
+                    type: 'hidden',
+                    name: '_token',
+                    value: '{{ csrf_token() }}'
+                }));
+                form.append($('<input>', {
+                    type: 'hidden',
+                    name: 'prnumber',
+                    value: prnumber
+                }));
+                form.append($('<input>', {
+                    type: 'hidden',
+                    name: 'stat',
+                    value: stat
+                }));
+                form.append($('<input>', {
+                    type: 'hidden',
+                    name: 'comment',
+                    value: result.value
+                }));
+
+                form.appendTo('body').submit();
+            }
+        });
+    });
+});
+$(function() {
+  $("input[data-bootstrap-switch]").each(function() {
+    $(this).bootstrapSwitch('state', $(this).prop('checked'));
+  });
+});
+</script>
+<script>
+$(function () {
+    $('#dateRange').daterangepicker({
+        autoUpdateInput: false,
+        locale: {
+            format: 'YYYY-MM-DD',
+            cancelLabel: 'Clear'
+        }
+    });
+
+    $('#dateRange').on('apply.daterangepicker', function(ev, picker) {
+        $(this).val(
+            picker.startDate.format('YYYY-MM-DD') +
+            ' to ' +
+            picker.endDate.format('YYYY-MM-DD')
+        );
+    });
+
+    $('#dateRange').on('cancel.daterangepicker', function(ev, picker) {
+        $(this).val('');
+    });
+});
+</script>
+

@@ -1,0 +1,309 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
+use App\Models\DocuFolder;
+use App\Models\Document;
+use App\Models\Employee;
+use App\Models\Office;
+use App\Models\Dpipop;
+use App\Models\Opcr;
+use App\Models\Dpcr;
+use App\Models\Ipcr;
+use App\Models\SpmsPersonnel;
+use App\Models\SpmsComment;
+use Illuminate\Support\Facades\Route;
+
+class DocumentFolderController extends Controller
+{
+    public function getGuard()
+    {
+        if(\Auth::guard('web')->check()) {
+            return 'web';
+        } elseif(\Auth::guard('employee')->check()) {
+            return 'employee';
+        }
+    }
+
+    function shortDecrypt($encrypted)
+    {
+        $key = 'fA7xB93kL0pTzWmQ';
+        $cipher = 'AES-128-ECB';
+        $encrypted = strtr($encrypted, '-_', '+/');
+        return openssl_decrypt(base64_decode($encrypted), $cipher, $key, 0);
+    }   
+    
+    public function createFolder(Request $request)
+    {
+        $request->validate([
+            'folderName' => 'required|string|max:255',
+            'office_access' => 'required|array',
+        ]);
+    
+        $folderName = $request->input('folderName');
+        $folderPath = public_path('Drives/' . $folderName);
+    
+        if (File::exists($folderPath)) {
+            return redirect()->back()->with('error', 'Folder already exists.');
+        }
+    
+        $newFolder = DocuFolder::create([
+            'folder_name' => $folderName,
+            'folder_category' => 'mainfolder',
+            'folder_path' => 'Drives/' . $folderName,
+            'office_access' => implode(', ', $request->input('office_access')),
+        ]);
+    
+        File::makeDirectory($folderPath);
+    
+        return redirect()->back()->with('success', 'Folder created successfully.');
+    }
+    
+    public function updateFolder(Request $request)
+    {
+        $request->validate([
+            'fid' => 'required|string|max:255',
+            'folderName' => 'required|string|max:255',
+            'office_access' => 'required|array', 
+        ]);
+    
+        $folderId = $request->input('fid');
+        $newFolderName = $request->input('folderName');
+        $newFolderPath = public_path('Drives/' . $newFolderName);
+    
+        $existingFolder = DocuFolder::find($folderId);
+    
+        if (!$existingFolder) {
+            return redirect()->back()->with('error', 'Folder not found.');
+        }
+    
+        $existingFolderPath = public_path($existingFolder->folder_path);
+        $existingFolderName = basename($existingFolderPath);
+    
+        if ($newFolderName !== $existingFolderName) {
+            if (File::exists($newFolderPath)) {
+                return redirect()->back()->with('error', 'Folder with the new name already exists.');
+            }
+    
+            $existingFolder->update([
+                'folder_name' => $newFolderName,
+                'folder_path' => 'Drives/' . $newFolderName,
+                'office_access' => implode(', ', $request->input('office_access')), 
+            ]);
+    
+            try {
+                File::move($existingFolderPath, $newFolderPath);
+                return redirect()->back()->with('success', 'Folder updated successfully.');
+            } catch (\Exception $e) {
+                return redirect()->back()->with('error', 'Error renaming folder: ' . $e->getMessage());
+            }
+        } else {
+            if ($existingFolder->office_access !== implode(', ', $request->input('office_access'))) {
+                $existingFolder->update([
+                    'office_access' => implode(', ', $request->input('office_access')),
+                ]);
+                return redirect()->back()->with('success', 'Folder updated successfully.');
+            }
+            return redirect()->back()->with('success', 'Folder name is the same, no changes made.');
+        }
+    }
+    
+    public function subfolder($id)
+    {
+        $guard = $this->getGuard();
+        $id = $this->shortDecrypt($id);
+        $pmtsUserIds = SpmsPersonnel::pluck('empid')->toArray();
+        $officeHeads = Office::pluck('office_head_id')->toArray();
+        $pmtsmember = SpmsPersonnel::where('category', 1)->pluck('empid')->toArray();
+        if($guard == 'employee' && !in_array(auth()->guard('employee')->user()->id, $pmtsUserIds) && $id == 1){
+            return redirect()->route('drive')->with('error', 'You do not have permission to access this page');
+        }elseif($guard == 'employee' && !in_array(auth()->guard('employee')->user()->id, $pmtsUserIds) && in_array($id, [1, 2]) && !in_array(auth()->guard('employee')->user()->id, $officeHeads)){
+            return redirect()->route('drive')->with('error', 'You do not have permission to access this page');
+        }
+
+        if ($id == 1) {
+            $model = new \App\Models\Opcr;
+            $foldercat = 'OPCR FOR';
+        } elseif ($id == 2) {
+            $model = new \App\Models\Dpcr;
+            $foldercat = 'DPCR FOR';
+        } else {
+            $model = new \App\Models\Ipcr;
+            $foldercat = 'IPCR FOR';
+        }
+
+        $table = $model->getTable();
+
+        $opcrsQuery = $model->join('employees', "$table.user_id", '=', 'employees.id')
+            ->where("$table.folder_id", $id)
+            ->select(
+                "$table.user_id",
+                "$table.pr_number",
+                "$table.mfo",
+                "$table.percent",
+                "$table.year",
+                "$table.status",
+                'employees.fname',
+                'employees.lname',
+                'employees.mname',
+                'employees.profile',
+                'employees.sex',
+                'employees.id as empid'
+            );
+
+        if ($guard == 'employee' && !in_array(auth()->guard($guard)->user()->id, $pmtsmember ?? [])) {
+            $opcrsQuery->where('employees.id', auth()->guard($guard)->user()->id);
+        }
+
+        $opcrs = $opcrsQuery->get()
+            ->groupBy(function ($item) {
+                return $item->user_id . '-' . $item->year;
+            });
+
+
+        $topUser = Opcr::select('user_id')
+            ->selectRaw('COUNT(*) as count')
+            ->groupBy('user_id')
+            ->orderBy('count', 'desc')
+            ->first();
+    
+
+        $rowCount = 0;
+        if ($topUser) {
+            $userId = $topUser->user_id;
+            $rowCount = Opcr::where('user_id', $userId)->count();
+        }
+
+        $folder = DocuFolder::find($id);
+        $connFolder = explode(',', $folder->connected_folder);
+        $connFolders = DocuFolder::whereIn('id', $connFolder)->get();
+        $offices = Office::all();
+        $office = null;
+        $subfolder = DocuFolder::where('folder_category', 'subfolder')->where('connected_folder', $id)->get();
+        if ($folder->folder_category !== "mainfolder") {
+            $subfolder = DocuFolder::where('folder_category', 'subfolder')
+            ->whereRaw("SUBSTRING_INDEX(connected_folder, ',', -1) = ?", [$id])
+            ->get();
+        }
+
+        if (!$folder) {
+            return abort(404);
+        }
+
+        $folderPath = public_path($folder->folder_path);
+        if(\Auth::guard('web')->check()){
+            $uid = auth()->guard('web')->user()->id;
+            $documents = Document::leftjoin('employees', 'documents.user_id', '=', 'employees.id')
+            ->where('folder_id', $id)->get();
+        }elseif(\Auth::guard('employee')->check()){
+            
+            $uid = auth()->guard('employee')->user()->id;
+            $office = Office::where('office_head_id', $uid)->first();
+    
+            if (!empty($office)) {
+                $offid = $office->id;
+                $documents = Document::join('employees', function ($join) use ($offid, $uid) {
+                    $join->on('documents.user_id', '=', 'employees.id')
+                        ->where(function ($query) use ($offid, $uid) {
+                            $query->where('employees.emp_dept', '=', $offid)
+                                ->orWhere('documents.user_id', '=', $uid);
+                        });
+                })
+                ->where('documents.folder_id', $id)
+                ->get();
+
+            } else{
+                $documents = Document::where('folder_id', $id)->where('user_id', $uid)->get();
+            }  
+        }
+         
+        return view('drive.viewSubFolder', compact('folder', 'subfolder', 'id', 'connFolders', 'documents', 'opcrs', 'rowCount', 'guard', 'uid', 'folderPath', 'office', 'offices', 'foldercat'));
+    }
+    
+    public function createSubFolder(Request $request, $id)
+    {
+        $id = $this->shortDecrypt($id);
+        $folder = DocuFolder::find($id);
+        $request->validate([
+            'folderName' => 'required|string|max:255',
+            'office_access' => 'required|array',
+        ]);
+        
+        $folderName = $request->input('folderName');
+        $folderPath = public_path($folder->folder_path . '/' . $folderName);
+    
+        if (File::exists($folderPath)) {
+            return redirect()->back()->with('error', 'Folder already exists.');
+        }
+    
+        $newFolder = DocuFolder::create([
+            'folder_name' => $folderName,
+            'folder_category' => 'subfolder',
+            'connected_folder' => empty($folder->connected_folder) ? $folder->id : $folder->connected_folder . ',' . $folder->id,
+            'folder_path' => $folder->folder_path . '/' . $folderName,
+            'office_access' => implode(', ', $request->input('office_access')),
+        ]);
+    
+        File::makeDirectory($folderPath);
+    
+        return redirect()->back()->with('success', 'Folder created successfully.');
+    }
+
+    public function deleteFolder($id)
+    {
+        $folder = DocuFolder::find($id);
+    
+        if (!$folder) {
+            return response()->json(['error' => 'Folder not found'], 404);
+        }
+    
+        $folderPath = public_path($folder->folder_path);
+    
+        if (File::exists($folderPath)) {
+            File::deleteDirectory($folderPath);
+        }
+    
+        $folder->delete();
+    
+        return response()->json(['success' => 'Folder deleted successfully']);
+    }
+
+    public function updateStat(Request $request)
+    {
+            $guard = $this->getGuard();
+            $prnumber = $request->prnumber;
+            $status = $request->stat;
+            $comment = $request->comment ?? null;
+
+            if (strpos($prnumber, 'O-') === 0) {
+                $models = \App\Models\Opcr::where('pr_number', $prnumber)->get();
+            } elseif (strpos($prnumber, 'D-') === 0) {
+                $models = \App\Models\Dpcr::where('pr_number', $prnumber)->get();
+            } elseif (strpos($prnumber, 'I-') === 0) {
+                $models = \App\Models\Ipcr::where('pr_number', $prnumber)->get();
+            } else {
+                return response()->json(['error' => 'Invalid prnumber format'], 400);
+            }
+
+            if ($models->isNotEmpty()) {
+                foreach ($models as $model) {
+                    $model->update(['status' => $status]);
+                }
+
+                if ($status == 4) {
+                    SpmsComment::create([
+                        'pr_number' => $prnumber,
+                        'comment' => $comment,
+                        'checkby' => $guard == 'employee' ? auth()->guard($guard)->user()->id : null,
+                    ]);
+                }
+
+            $message = ($status == 5) ? 'Request submitted successfully' : 'Status updated successfully';
+            return redirect()->back()->with('success', $message);
+        } else {
+            return redirect()->back()->with('error', 'No records found to update');
+        }
+    }
+}
