@@ -66,7 +66,7 @@
                     
                     <div class="col-md-1">
                         <button type="button" class="btn btn-outline-danger btn-sm btn-delete">
-                            <i class="fas fa-trash fa-sm"></i>
+                            <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
                         </button>    
                     </div>
                 </div>
@@ -74,6 +74,7 @@
     
             $('#form-container').append(newRow);
             updateData();
+            window.refreshUi?.(document.getElementById('form-container'));
         });
     
         $('#form-container').on('input', '.update-child', function() {

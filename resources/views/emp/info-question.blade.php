@@ -12,7 +12,7 @@
 
         <div class="flex items-center gap-3">
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
-                <i class="fas fa-question-circle text-amber-600 dark:text-amber-400 text-sm"></i>
+                <i data-lucide="circle-help" class="h-4 w-4 text-amber-600 dark:text-amber-400"></i>
             </div>
             <div>
                 <h1 class="text-base font-bold text-foreground">Other Info Questions</h1>
@@ -69,24 +69,24 @@
                             <span class="text-xs text-foreground">Yes</span>
                         </label>
                         @if($idx == 3)
-                            <div class="flex flex-wrap items-center gap-2 ml-2">
+                            <div data-detail-for="{{ $idx }}" class="{{ ($question[$idx] ?? '') == 1 ? 'flex' : 'hidden' }} flex-wrap items-center gap-2 ml-2">
                                 <span class="text-[10px] text-muted-foreground">Date Filed:</span>
                                 <input class="{{ $inputCls }} input-details updated-data w-36"
                                     type="date" name="qdetails_3_date" data-array="12"
-                                    value="{{ $qdetails[12] ?? '' }}" id="details-date-3">
+                                    value="{{ $qdetails[12] ?? '' }}" id="details-date-3" @disabled(($question[$idx] ?? '') != 1)>
                                 <span class="text-[10px] text-muted-foreground">Status of Case/s:</span>
                                 <input class="{{ $inputCls }} input-details updated-data w-48"
                                     type="text" name="qdetails_{{ $idx }}" data-array="{{ $idx }}"
                                     value="{{ $qdetails[$idx] ?? '' }}" id="details-{{ $idx }}"
-                                    placeholder="Status">
+                                    placeholder="Status" @disabled(($question[$idx] ?? '') != 1)>
                             </div>
                         @elseif($detailLabel)
-                            <div class="flex items-center gap-2 ml-2">
+                            <div data-detail-for="{{ $idx }}" class="{{ ($question[$idx] ?? '') == 1 ? 'flex' : 'hidden' }} items-center gap-2 ml-2">
                                 <span class="text-[10px] text-muted-foreground">{{ $detailLabel }}:</span>
                                 <input class="{{ $inputCls }} input-details updated-data w-64"
                                     type="text" name="qdetails_{{ $idx }}" data-array="{{ $idx }}"
                                     value="{{ $qdetails[$idx] ?? '' }}" id="details-{{ $idx }}"
-                                    placeholder="Details">
+                                    placeholder="Details" @disabled(($question[$idx] ?? '') != 1)>
                             </div>
                         @else
                             <input class="hidden input-details updated-data" type="hidden"
@@ -128,12 +128,12 @@
                                 {{ ($question[$idx] ?? '') == 1 ? 'checked' : '' }}>
                             <span class="text-xs text-foreground">Yes</span>
                         </label>
-                        <div class="flex items-center gap-2 ml-2">
+                        <div data-detail-for="{{ $idx }}" class="{{ ($question[$idx] ?? '') == 1 ? 'flex' : 'hidden' }} items-center gap-2 ml-2">
                             <span class="text-[10px] text-muted-foreground">{{ $detailLabel }}:</span>
                             <input class="{{ $inputCls }} input-details updated-data w-64"
                                 type="text" name="qdetails_{{ $idx }}" data-array="{{ $idx }}"
                                 value="{{ $qdetails[$idx] ?? '' }}" id="details-{{ $idx }}"
-                                placeholder="Details">
+                                placeholder="Details" @disabled(($question[$idx] ?? '') != 1)>
                         </div>
                     </div>
                 </div>

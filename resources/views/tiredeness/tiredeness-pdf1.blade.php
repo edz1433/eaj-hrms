@@ -135,7 +135,8 @@
                     $totalLateMorning = $totalLateAfternoon = $totalUndertimeMorning = $totalUndertimeAfternoon = 0;
                 @endphp
                 
-                @for($i = 1; $i <= 31; $i++)
+                @php $daysInMonth = \Carbon\Carbon::createFromDate((int) $year, (int) $monthNumber, 1)->daysInMonth; @endphp
+                @for($i = 1; $i <= $daysInMonth; $i++)
                     @php
                         $currentDate = \Carbon\Carbon::parse("$year-$monthNumber-$i");
                         $dayOfWeek = $currentDate->format('l');

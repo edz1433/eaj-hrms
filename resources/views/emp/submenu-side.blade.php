@@ -32,24 +32,32 @@
         $employee->lname ? ucwords(strtolower($employee->lname)) : null,
         $employee->suffix ?: null,
     ])->filter()->implode(' '));
-    $profileUrl = $employee->profile && file_exists(public_path('Profile/Employee/' . $employee->profile))
-        ? asset('Profile/Employee/' . $employee->profile)
-        : asset('Profile/Employee/default.png');
+    $profileFile = trim((string) $employee->profile);
+    $placeholderFiles = ['default.png', 'default-male.png', 'default-female.png'];
+    $hasProfileImage = $profileFile
+        && !in_array(strtolower($profileFile), $placeholderFiles, true)
+        && file_exists(public_path('Profile/Employee/' . $profileFile));
+    $profileUrl = $hasProfileImage ? asset('Profile/Employee/' . $profileFile) : null;
+    $i1 = strtoupper(substr($employee->fname ?? '', 0, 1));
+    $i2 = strtoupper(substr($employee->lname ?? '', 0, 1));
+    $profileInitials = ($i1 . $i2) ?: '?';
+    $profilePalette = ['#C9407A','#7C3AED','#2563EB','#059669','#D97706','#DC2626','#0891B2','#0D9488'];
+    $profileInitialColor = $i1 ? $profilePalette[ord($i1) % count($profilePalette)] : '#C9407A';
 
     // PDS nav items: [route_name, route_param_key, icon, label, request_path, completion_key]
     $pdsNav = [
         ['PDS',           $encryptedEmployeeId, 'user-round',          'Personal Information',        ['pds/personal-info/*','pds'], 'personal',  true],
-        ['familybg',      $employee->id, 'users-round',         'Family Background',           ['pds/family-bg','pds/family-bg/*'], 'colfamstat',  false],
-        ['educbg',        $employee->id, 'graduation-cap',      'Educational Background',      ['pds/educ-bg','pds/educ-bg/*'], 'coleducstat', false],
-        ['eligibility',   $employee->id, 'badge-check',         'Eligibility',                 ['pds/eligibility','pds/eligibility/*'], 'eligibility', null],
-        ['work-experience',$employee->id,'briefcase-business',  'Work Experience',             ['pds/work-experience','pds/work-experience/*'], 'workexperience', null],
-        ['voluntary-work',$employee->id, 'heart-handshake',     'Voluntary Work',              ['pds/voluntary-work','pds/voluntary-work/*'], 'voluntaryworks', null],
-        ['learning-dev',  $employee->id, 'book-open-check',     'Learning & Development',      ['pds/learning-dev','pds/learning-dev/*'], 'learningdev', null],
-        ['otherInfo',     $employee->id, 'info',                'Other Information',           ['pds/other-info','pds/other-info/*'], 'colotherinfo', false],
-        ['infoQuestion',  $employee->id, 'circle-help',         'Other Info Questions',        ['pds/info-question','pds/info-question/*'], 'colinfoquestion', false],
-        ['references',    $employee->id, 'contact-round',       'References',                  ['pds/references','pds/references/*'], 'colreferences', false],
-        ['govids',        $employee->id, 'id-card',             'Government Issued ID',        ['pds/government-id','pds/government-id/*'], 'colgovids', false],
-        ['signature',     $employee->id, 'signature',           'E-Signature',                 ['pds/signature','pds/signature/*'], null, false],
+        ['familybg',      $encryptedEmployeeId, 'users-round',         'Family Background',           ['pds/family-bg','pds/family-bg/*'], 'colfamstat',  false],
+        ['educbg',        $encryptedEmployeeId, 'graduation-cap',      'Educational Background',      ['pds/educ-bg','pds/educ-bg/*'], 'coleducstat', false],
+        ['eligibility',   $encryptedEmployeeId, 'badge-check',         'Eligibility',                 ['pds/eligibility','pds/eligibility/*'], 'eligibility', null],
+        ['work-experience',$encryptedEmployeeId,'briefcase-business',  'Work Experience',             ['pds/work-experience','pds/work-experience/*'], 'workexperience', null],
+        ['voluntary-work',$encryptedEmployeeId, 'heart-handshake',     'Voluntary Work',              ['pds/voluntary-work','pds/voluntary-work/*'], 'voluntaryworks', null],
+        ['learning-dev',  $encryptedEmployeeId, 'book-open-check',     'Learning & Development',      ['pds/learning-dev','pds/learning-dev/*'], 'learningdev', null],
+        ['otherInfo',     $encryptedEmployeeId, 'info',                'Other Information',           ['pds/other-info','pds/other-info/*'], 'colotherinfo', false],
+        ['infoQuestion',  $encryptedEmployeeId, 'circle-help',         'Other Info Questions',        ['pds/info-question','pds/info-question/*'], 'colinfoquestion', false],
+        ['references',    $encryptedEmployeeId, 'contact-round',       'References',                  ['pds/references','pds/references/*'], 'colreferences', false],
+        ['govids',        $encryptedEmployeeId, 'id-card',             'Government Issued ID',        ['pds/government-id','pds/government-id/*'], 'colgovids', false],
+        ['signature',     $encryptedEmployeeId, 'signature',           'E-Signature',                 ['pds/signature','pds/signature/*'], null, false],
     ];
 @endphp
 
@@ -191,13 +199,13 @@
             </div>
 
             {{-- Preview / Print links --}}
-            <a href="{{ ($guard == 'web') ? route('generatepds', $employee->id) : route('generatepds') }}" target="_blank"
+            <a href="{{ ($guard == 'web') ? route('generatepds', $encryptedEmployeeId) : route('generatepds') }}" target="_blank"
                class="group flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                 <i data-lucide="eye" class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 group-hover:text-foreground"></i>
                 <span class="flex-1">Preview PDS</span>
                 <i data-lucide="external-link" class="h-3 w-3 opacity-40"></i>
             </a>
-            <a href="{{ ($guard == 'web') ? route('genpdsAtthachment', $employee->id) : route('genpdsAtthachment') }}" target="_blank"
+            <a href="{{ ($guard == 'web') ? route('genpdsAtthachment', $encryptedEmployeeId) : route('genpdsAtthachment') }}" target="_blank"
                class="group flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                 <i data-lucide="paperclip" class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 group-hover:text-foreground"></i>
                 <span class="flex-1">CS Form Attachment</span>
@@ -213,7 +221,7 @@
      aria-modal="true" role="dialog">
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeEmployeeIdModal()"></div>
 
-    <div class="relative w-full max-w-4xl overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
+    <div class="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
         <div class="flex items-center justify-between border-b border-border/60 px-5 py-4">
             <div class="flex items-center gap-3">
                 <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -238,7 +246,7 @@
             </div>
         </div>
 
-        <div class="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div class="p-5">
             <div class="flex justify-center overflow-x-auto rounded-2xl bg-muted/30 p-4">
                 <div id="employee-id-card"
                      class="relative aspect-[2.125/3.375] w-[340px] shrink-0 overflow-hidden rounded-[24px] border border-black/10 bg-white text-slate-950 shadow-2xl"
@@ -260,7 +268,11 @@
                                 </div>
                             </div>
                             <div class="mt-7 flex justify-center">
-                                <img src="{{ $profileUrl }}" alt="{{ $displayName }}" class="h-36 w-36 rounded-[28px] border-4 border-white object-cover shadow-xl">
+                                @if($hasProfileImage)
+                                    <img src="{{ $profileUrl }}" alt="{{ $displayName }}" class="h-36 w-36 rounded-[28px] border-4 border-white object-cover shadow-xl">
+                                @else
+                                    <span class="flex h-36 w-36 items-center justify-center rounded-[28px] border-4 border-white text-5xl font-black text-white shadow-xl" style="background-color: {{ $profileInitialColor }};">{{ $profileInitials }}</span>
+                                @endif
                             </div>
                             <div class="mt-5 text-center">
                                 <p class="text-[22px] font-black uppercase leading-tight tracking-normal">{{ $displayName ?: 'Employee Profile' }}</p>
@@ -294,7 +306,11 @@
                                 </div>
                             </div>
                             <div class="mt-8 flex justify-center">
-                                <img src="{{ $profileUrl }}" alt="{{ $displayName }}" class="h-40 w-32 rounded-[22px] border border-slate-200 object-cover shadow-lg">
+                                @if($hasProfileImage)
+                                    <img src="{{ $profileUrl }}" alt="{{ $displayName }}" class="h-40 w-32 rounded-[22px] border border-slate-200 object-cover shadow-lg">
+                                @else
+                                    <span class="flex h-40 w-32 items-center justify-center rounded-[22px] border border-slate-200 text-5xl font-black text-white shadow-lg" style="background-color: {{ $profileInitialColor }};">{{ $profileInitials }}</span>
+                                @endif
                             </div>
                             <div class="mt-6 text-center">
                                 <p class="text-[20px] font-black uppercase leading-tight tracking-normal">{{ $displayName ?: 'Employee Profile' }}</p>
@@ -327,7 +343,11 @@
                             </div>
                         </div>
                         <div class="-mt-8 flex flex-col items-center px-6 pb-6 text-center">
-                            <img src="{{ $profileUrl }}" alt="{{ $displayName }}" class="h-36 w-36 rounded-[28px] border-4 border-white object-cover shadow-xl">
+                            @if($hasProfileImage)
+                                <img src="{{ $profileUrl }}" alt="{{ $displayName }}" class="h-36 w-36 rounded-[28px] border-4 border-white object-cover shadow-xl">
+                            @else
+                                <span class="flex h-36 w-36 items-center justify-center rounded-[28px] border-4 border-white text-5xl font-black text-white shadow-xl" style="background-color: {{ $profileInitialColor }};">{{ $profileInitials }}</span>
+                            @endif
                             <p class="mt-5 text-[22px] font-black uppercase leading-tight tracking-normal">{{ $displayName ?: 'Employee Profile' }}</p>
                             <p class="mt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ $employee->position ?: 'No position set' }}</p>
                             <div class="mt-6 grid w-full grid-cols-[1fr_86px] gap-3">
@@ -345,46 +365,6 @@
                         </div>
                     @endif
                 </div>
-            </div>
-
-            <div class="space-y-3">
-                <div class="rounded-2xl border border-border/60 bg-muted/20 p-4">
-                    <div class="flex items-center gap-3">
-                        <img src="{{ $profileUrl }}" alt="{{ $displayName }}" class="h-14 w-14 rounded-2xl object-cover">
-                        <div class="min-w-0">
-                            <p class="truncate text-sm font-bold text-foreground">{{ $displayName ?: 'Employee Profile' }}</p>
-                            <p class="truncate text-xs text-muted-foreground">{{ $employee->position ?: 'No position set' }}</p>
-                        </div>
-                    </div>
-                </div>
-                <dl class="grid gap-2 text-xs">
-                    <div class="flex items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-2">
-                        <dt class="text-muted-foreground">Employee ID</dt>
-                        <dd class="font-mono font-bold text-foreground">{{ $employee->emp_ID }}</dd>
-                    </div>
-                    <div class="flex items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-2">
-                        <dt class="text-muted-foreground">QR</dt>
-                        <dd class="font-semibold text-foreground">Encrypted</dd>
-                    </div>
-                    <div class="flex items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-2">
-                        <dt class="text-muted-foreground">Logo</dt>
-                        <dd class="font-semibold text-foreground">{{ $idLogoUrl ? 'Settings logo' : 'System initial' }}</dd>
-                    </div>
-                    <div class="flex items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-2">
-                        <dt class="text-muted-foreground">Colors</dt>
-                        <dd class="flex items-center gap-1.5">
-                            <span class="h-4 w-4 rounded-full border border-border" style="background:{{ $idPrimary }}"></span>
-                            <span class="h-4 w-4 rounded-full border border-border" style="background:{{ $idAccent }}"></span>
-                        </dd>
-                    </div>
-                </dl>
-                @if($guard == 'web')
-                    <a href="{{ route('settings') }}#appearance"
-                       class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-xs font-semibold text-foreground transition hover:bg-muted">
-                        <i data-lucide="palette" class="h-3.5 w-3.5"></i>
-                        Customize in Settings
-                    </a>
-                @endif
             </div>
         </div>
     </div>
@@ -428,80 +408,109 @@ document.getElementById('employee-id-download-btn').addEventListener('click', fu
 });
 
 // Profile picture upload
-$(document).ready(function() {
-    const originalAvatarHtml = $('#profilePictureTrigger').html();
+document.addEventListener('DOMContentLoaded', () => {
+    const trigger = document.getElementById('profilePictureTrigger');
+    const input = document.getElementById('profilePictureInput');
+    if (!trigger || !input) return;
 
-    function setProfileAvatar(src) {
-        const avatar = $('#changeProfilePicture');
-        const cacheSafeSrc = `${src}${src.includes('?') ? '&' : '?'}preview=${Date.now()}`;
+    const originalAvatarHtml = document.getElementById('changeProfilePicture')?.outerHTML || '';
+    const uploadUrl = @json(route('updateProfilePicture', $employee->id));
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || @json(csrf_token());
+    const avatarAlt = @json($displayName ?: 'Employee Profile');
+    const avatarClass = 'h-24 w-24 rounded-full object-cover text-2xl ring-4 ring-card shadow-lg cursor-pointer transition hover:opacity-90';
 
-        if (avatar.is('img')) {
-            avatar.attr('src', cacheSafeSrc);
+    const notify = (type, title, message = '') => {
+        if (window.Swal) {
+            window.Swal.fire({
+                title,
+                text: message,
+                icon: type,
+                timer: type === 'success' ? 2000 : undefined,
+                showConfirmButton: type !== 'success',
+            });
             return;
         }
 
-        const replacement = $('<img>', {
-            id: 'changeProfilePicture',
-            src: cacheSafeSrc,
-            alt: avatar.attr('alt') || @json($displayName ?: 'Employee Profile'),
-            title: 'Click to change photo',
-            class: avatar.attr('class') || 'h-24 w-24 rounded-full object-cover text-2xl ring-4 ring-card shadow-lg cursor-pointer transition hover:opacity-90',
-        });
+        if (window.safeToast?.[type]) {
+            window.safeToast[type](title, message);
+            return;
+        }
 
+        if (message) alert(`${title}\n${message}`);
+    };
+
+    const cacheSafe = (src) => `${src}${src.includes('?') ? '&' : '?'}preview=${Date.now()}`;
+
+    const setProfileAvatar = (src) => {
+        const avatar = document.getElementById('changeProfilePicture');
+        if (!avatar) return;
+
+        if (avatar.tagName.toLowerCase() === 'img') {
+            avatar.src = cacheSafe(src);
+            return;
+        }
+
+        const replacement = document.createElement('img');
+        replacement.id = 'changeProfilePicture';
+        replacement.src = cacheSafe(src);
+        replacement.alt = avatar.getAttribute('alt') || avatarAlt;
+        replacement.title = 'Click to change photo';
+        replacement.className = avatar.getAttribute('class') || avatarClass;
         avatar.replaceWith(replacement);
-    }
+    };
 
-    $('#profilePictureTrigger').on('click', function(event) {
-        if ($(event.target).is('#profilePictureInput')) return;
-        $('#profilePictureInput').trigger('click');
+    trigger.addEventListener('click', (event) => {
+        if (event.target === input) return;
+        input.click();
     });
 
-    $('#profilePictureInput').on('change', function() {
-        const file = this.files[0];
+    input.addEventListener('change', async () => {
+        const file = input.files?.[0];
         if (!file) return;
+
         if (!file.type.startsWith('image/')) {
-            this.value = '';
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({ title: 'Invalid file', text: 'Please choose an image file.', icon: 'error' });
-            }
+            input.value = '';
+            notify('error', 'Invalid file', 'Please choose an image file.');
             return;
         }
 
         const reader = new FileReader();
-        reader.onload = e => setProfileAvatar(e.target.result);
+        reader.onload = (event) => setProfileAvatar(event.target.result);
         reader.readAsDataURL(file);
 
-        const fd = new FormData();
-        fd.append('profileImage', file);
-        $('#profilePictureTrigger').addClass('pointer-events-none opacity-70');
-        $.ajax({
-            url: '{{ route("updateProfilePicture", $employee->id) }}',
-            type: 'POST',
-            data: fd,
-            processData: false,
-            contentType: false,
-            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
-            success: function(response) {
-                if (response.profile) setProfileAvatar(response.profile);
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({ title: 'Profile Updated!', icon: 'success', timer: 2000, showConfirmButton: false });
-                }
-            },
-            error: function(xhr) {
-                $('#profilePictureTrigger').html(originalAvatarHtml);
-                const message = xhr.responseJSON?.message || xhr.responseJSON?.error || 'Profile picture could not be updated.';
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({ title: 'Upload failed', text: message, icon: 'error' });
-                } else {
-                    alert(message);
-                }
-            },
-            complete: function() {
-                $('#profilePictureTrigger').removeClass('pointer-events-none opacity-70');
-                $('#profilePictureInput').val('');
-                if (typeof lucide !== 'undefined') lucide.createIcons();
+        const formData = new FormData();
+        formData.append('profileImage', file);
+        trigger.classList.add('pointer-events-none', 'opacity-70');
+
+        try {
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData,
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok || data.success === false) {
+                throw new Error(data.message || data.error || 'Profile picture could not be updated.');
             }
-        });
+
+            if (data.profile) setProfileAvatar(data.profile);
+            notify('success', 'Profile Updated!');
+        } catch (error) {
+            const avatar = document.getElementById('changeProfilePicture');
+            if (avatar && originalAvatarHtml) {
+                avatar.outerHTML = originalAvatarHtml;
+            }
+            notify('error', 'Upload failed', error.message || 'Profile picture could not be updated.');
+        } finally {
+            trigger.classList.remove('pointer-events-none', 'opacity-70');
+            input.value = '';
+            window.refreshUi?.(trigger);
+        }
     });
 });
 </script>

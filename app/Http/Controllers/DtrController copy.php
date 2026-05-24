@@ -121,8 +121,8 @@ class DtrController extends Controller
         }
     
         $employee = Employee::where('emp_ID', $employeeId)
-        ->join('dbcpsupms.offices', 'employees.emp_dept', '=', 'dbcpsupms.offices.id')
-        ->select('employees.*', 'dbcpsupms.offices.office_name')
+        ->join('offices', 'employees.emp_dept', '=', 'offices.id')
+        ->select('employees.*', 'offices.office_name')
         ->first();
 
         $supervisor = Employee::where('id', $employee->supervisor)

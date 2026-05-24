@@ -33,7 +33,7 @@
         <div class="flex flex-wrap items-center gap-2 sm:shrink-0">
             <a href="{{ route('empQr') }}" target="_blank"
             class="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3.5 py-2 text-xs font-medium text-foreground shadow-sm transition-all hover:border-border hover:shadow-md">
-                <i data-lucide="qr-code" class="h-3.5 w-3.5 opacity-70"></i> QR Codes
+                <i data-lucide="id-card" class="h-3.5 w-3.5 opacity-70"></i> All ID Cards
             </a>
             <a href="{{ route('genEmp') }}" target="_blank"
             class="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3.5 py-2 text-xs font-medium text-foreground shadow-sm transition-all hover:border-border hover:shadow-md">
@@ -453,10 +453,11 @@
             </button>
         </div>
 
-        <form action="{{ route('OfficialTimeCreate') }}" method="POST">
+        <form id="ot-form" action="{{ route('OfficialTimeCreate') }}" method="POST">
             @csrf
             <input type="hidden" name="empid" id="ot-empid">
             <div class="p-5 space-y-2.5">
+                <div id="ot-message" class="hidden rounded-lg border px-3 py-2 text-xs"></div>
                 <div class="flex items-center gap-3 pb-0.5">
                     <span class="w-10 shrink-0"></span>
                     <div class="grid flex-1 grid-cols-4 gap-2 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -481,7 +482,8 @@
                     Cancel
                 </button>
                 <button type="submit"
-                    class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90">
+                    id="ot-submit"
+                    class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
                     <i data-lucide="save" class="h-3.5 w-3.5"></i> Save Schedule
                 </button>
             </div>
@@ -547,39 +549,103 @@
 @push('scripts')
 <script>
 // â”€â”€ Official Time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const officialTimeFields = [
+    'mon_mornin', 'mon_mornout', 'mon_noonin', 'mon_noonout',
+    'tue_mornin', 'tue_mornout', 'tue_noonin', 'tue_noonout',
+    'wed_mornin', 'wed_mornout', 'wed_noonin', 'wed_noonout',
+    'thu_mornin', 'thu_mornout', 'thu_noonin', 'thu_noonout',
+    'fri_mornin', 'fri_mornout', 'fri_noonin', 'fri_noonout',
+];
+
+function setOfficialTimeMessage(message = '', type = 'error') {
+    const box = document.getElementById('ot-message');
+    if (!box) return;
+
+    box.textContent = message;
+    box.classList.toggle('hidden', !message);
+    box.className = 'rounded-lg border px-3 py-2 text-xs ' + (message ? '' : 'hidden ') +
+        (type === 'success'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300'
+            : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300');
+}
+
+function officialTimeDefaultFor(name) {
+    if (name.includes('noonin')) return '13:00';
+    if (name.includes('noonout')) return '17:00';
+    if (name.includes('mornout')) return '12:00';
+    return '08:00';
+}
+
+function fillOfficialTime(schedule = {}) {
+    officialTimeFields.forEach(name => {
+        const el = document.querySelector(`#ot-backdrop [name="${name}"]`);
+        if (!el) return;
+
+        el.value = schedule[name] ? String(schedule[name]).substring(0, 5) : officialTimeDefaultFor(name);
+    });
+}
+
 function openOfficialTime(empId) {
     document.getElementById('ot-empid').value = empId;
-    document.querySelectorAll('#ot-backdrop input[type="time"]').forEach(el => el.value = '');
+    setOfficialTimeMessage();
+    fillOfficialTime();
 
     fetch('{{ url("/employees/official-time") }}/' + encodeURIComponent(empId), {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         }
     })
     .then(r => r.json())
     .then(data => {
-        const map = {
-            mon_mornin: 'morn_mon', mon_noonin: 'aft_mon',
-            tue_mornin: 'morn_tue', tue_noonin: 'aft_tue',
-            wed_mornin: 'morn_wed', wed_noonin: 'aft_wed',
-            thu_mornin: 'morn_thu', thu_noonin: 'aft_thu',
-            fri_mornin: 'morn_fri', fri_noonin: 'aft_fri',
-        };
-        Object.entries(map).forEach(([name, field]) => {
-            if (!data[field]) return;
-            const el = document.querySelector(`#ot-backdrop [name="${name}"]`);
-            if (el) el.value = String(data[field]).substring(0, 5);
-        });
+        if (!data.success) throw new Error(data.message || 'Unable to load official time.');
+        fillOfficialTime(data.data || {});
     })
-    .catch(() => {});
+    .catch(() => {
+        setOfficialTimeMessage('Using default working hours because the saved schedule could not be loaded.');
+    });
 
     document.getElementById('ot-backdrop').classList.replace('hidden', 'flex');
 }
 function closeOfficialTime() {
     document.getElementById('ot-backdrop').classList.replace('flex', 'hidden');
 }
+
+document.getElementById('ot-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const submit = document.getElementById('ot-submit');
+    setOfficialTimeMessage();
+    submit?.setAttribute('disabled', 'disabled');
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+            body: new FormData(form),
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            const errors = data.errors ? Object.values(data.errors).flat() : [];
+            throw new Error(errors[0] || data.message || 'Unable to save official time.');
+        }
+
+        fillOfficialTime(data.data || {});
+        setOfficialTimeMessage(data.message || 'Official time saved successfully.', 'success');
+        setTimeout(closeOfficialTime, 700);
+    } catch (error) {
+        setOfficialTimeMessage(error.message || 'Unable to save official time.');
+    } finally {
+        submit?.removeAttribute('disabled');
+    }
+});
 
 // â”€â”€ Toggle confirm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _empId, _state, _btn;
@@ -673,4 +739,3 @@ document.getElementById('confirmToggleBtn').addEventListener('click', () => {
 @endpush
 
 @endsection
-

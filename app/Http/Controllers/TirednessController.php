@@ -25,19 +25,30 @@ class TirednessController extends Controller
     public function readTiredness(Request $request)
     {
         $guard = $this->getGuard();
-        $employeeall = Employee::all();
+        $employeeall = Employee::where('stat_1', 1)
+            ->orderBy('lname')
+            ->orderBy('fname')
+            ->get();
         $employee = null;
-        $month = null;
-        $employeeId = null;
+        $month = now()->format('Y-m');
+        $employeeId = $guard === 'employee'
+            ? auth()->guard('employee')->user()->emp_ID
+            : 0;
     
         if ($request->isMethod('post')) {
-            if ($request->has('employee') && $request->has('month')) {
-                if($employee == 0){
-                    $employee = Employee::where('emp_ID', $request->employee)->first();
-                    $month = $request->month;
-                    $employeeId = $employee ? $employee->emp_ID : 0;
-                }
-            }
+            $request->validate([
+                'employee' => ['required'],
+                'month' => ['required', 'date_format:Y-m'],
+            ]);
+
+            $month = $request->month;
+            $employeeId = $guard === 'employee'
+                ? auth()->guard('employee')->user()->emp_ID
+                : (string) $request->employee;
+        }
+
+        if ((string) $employeeId !== '0') {
+            $employee = Employee::where('emp_ID', $employeeId)->first();
         }
     
         return view('tiredeness.tiredeness', compact('guard', 'employee', 'employeeall', 'employeeId', 'month'));
@@ -51,7 +62,8 @@ class TirednessController extends Controller
         $monthNumber = date('m', strtotime($month));
     
         if($employeeId == 0){
-            $dtrRecords = Dtr::whereMonth('date', $monthNumber)
+            $dtrRecords = Dtr::whereYear('date', $year)
+            ->whereMonth('date', $monthNumber)
             ->join('employees', 'dtrs.emp_ID', '=', 'employees.emp_ID')
             ->selectRaw("
                 employees.lname,
@@ -151,9 +163,11 @@ class TirednessController extends Controller
             $form = 'tiredeness.tiredeness-pdf';
         }else{
             $dtrRecords = Dtr::where('emp_ID', $employeeId)
-                ->whereMonth('date', $monthNumber)->get();
+                ->whereYear('date', $year)
+                ->whereMonth('date', $monthNumber)
+                ->get();
 
-            $officialtimes = OfficialTime::where('empid', '=', $employeeId)->first();
+            $officialtimes = OfficialTime::forEmployee((string) $employeeId);
 
             $form = 'tiredeness.tiredeness-pdf1';
         }

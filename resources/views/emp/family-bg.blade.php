@@ -14,7 +14,7 @@
         {{-- Header --}}
         <div class="flex items-center gap-3">
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-900/30">
-                <i class="fas fa-users text-rose-600 dark:text-rose-400 text-sm"></i>
+                <i data-lucide="users-round" class="h-4 w-4 text-rose-600 dark:text-rose-400"></i>
             </div>
             <div>
                 <h1 class="text-base font-bold text-foreground">Family Background</h1>
@@ -25,7 +25,7 @@
         {{-- Spouse Info --}}
         <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
-                <i class="fas fa-ring text-rose-500 text-xs opacity-70"></i>
+                <i data-lucide="gem" class="h-3.5 w-3.5 text-rose-500 opacity-70"></i>
                 <span class="text-xs font-bold uppercase tracking-wide text-foreground">Spouse Information</span>
             </div>
             <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -78,12 +78,12 @@
         <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             <div class="flex items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3">
                 <div class="flex items-center gap-2">
-                    <i class="fas fa-child text-sky-500 text-xs opacity-70"></i>
+                    <i data-lucide="baby" class="h-3.5 w-3.5 text-sky-500 opacity-70"></i>
                     <span class="text-xs font-bold uppercase tracking-wide text-foreground">Children</span>
                 </div>
                 <button id="add-row-familybg" type="button"
                     class="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 transition-colors">
-                    <i class="fas fa-plus text-[9px]"></i> Add Row
+                    <i data-lucide="plus" class="h-3 w-3"></i> Add Row
                 </button>
             </div>
             <div class="p-5">
@@ -105,7 +105,7 @@
                                 @if($index > 0)
                                     <button type="button"
                                         class="btn-delete flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 dark:border-red-800/40 dark:bg-red-950/30 transition-colors">
-                                        <i class="fas fa-trash text-[10px]"></i>
+                                        <i data-lucide="x" class="h-3 w-3"></i>
                                     </button>
                                 @else
                                     <div class="h-8 w-8"></div>
@@ -120,7 +120,7 @@
         {{-- Father --}}
         <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
-                <i class="fas fa-male text-slate-500 text-xs opacity-70"></i>
+                <i data-lucide="user-round" class="h-3.5 w-3.5 text-slate-500 opacity-70"></i>
                 <span class="text-xs font-bold uppercase tracking-wide text-foreground">Father's Name</span>
             </div>
             <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -154,7 +154,7 @@
         {{-- Mother --}}
         <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
-                <i class="fas fa-female text-pink-500 text-xs opacity-70"></i>
+                <i data-lucide="user-round" class="h-3.5 w-3.5 text-pink-500 opacity-70"></i>
                 <span class="text-xs font-bold uppercase tracking-wide text-foreground">Mother's Maiden Name</span>
             </div>
             <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -191,6 +191,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const fieldUrl = @json(route('familyBgUpdate'));
     const childUrl = @json(route('update-child'));
     const inputClass = @json($inputCls);
+
+    function refreshRowIcons(row) {
+        requestAnimationFrame(() => {
+            window.refreshUi?.(row);
+            window.refreshIcons?.();
+        });
+    }
 
     function markField(field, state) {
         field.classList.remove('border-emerald-400', 'border-red-400');
@@ -290,11 +297,11 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="text" name="name_child[]" class="${inputClass} update-child" placeholder="N/A">
             <input type="date" name="date_birth[]" class="${inputClass} update-child">
             <button type="button" class="btn-delete flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 dark:border-red-800/40 dark:bg-red-950/30 transition-colors">
-                <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
+                <i data-lucide="x" class="h-3.5 w-3.5"></i>
             </button>
         `;
         document.getElementById('form-container')?.appendChild(row);
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+        refreshRowIcons(row);
         row.querySelector('input')?.focus();
         saveChildren();
     });

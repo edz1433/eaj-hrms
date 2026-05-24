@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\DtrController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\TimeEntryController;
+use App\Http\Controllers\Api\ModernTimeEntryController;
 use App\Http\Controllers\Api\TimeEntryDtrController;
 use App\Http\Controllers\Api\JobHiringController;
 use App\Http\Controllers\Api\ApplicationController;
@@ -38,6 +39,21 @@ Route::prefix('app-dtr')->group(function () {
     // Wildcard route must be LAST to prevent catching static paths like /search
     Route::post('/{empid}', [TimeEntryDtrController::class, 'dtrRead'])->name('app-dtr-read');
 });
+
+Route::prefix('time-entry')->middleware('web')->group(function () {
+    Route::post('/validate-qr', [ModernTimeEntryController::class, 'validateQr'])->name('api.time-entry.validate-qr');
+    Route::post('/verify-face', [ModernTimeEntryController::class, 'verifyFace'])->name('api.time-entry.verify-face');
+    Route::post('/status', [ModernTimeEntryController::class, 'status'])->name('api.time-entry.status');
+    Route::post('/log-attendance', [ModernTimeEntryController::class, 'logAttendance'])->name('api.time-entry.log-attendance');
+});
+
+Route::prefix('face-registration')
+    ->middleware(['web', 'login_auth', 'face_registration'])
+    ->group(function () {
+        Route::get('/employees', [ModernTimeEntryController::class, 'employees'])->name('api.face-registration.employees');
+        Route::post('/register', [ModernTimeEntryController::class, 'registerFace'])->name('api.face-registration.register');
+        Route::get('/logs', [ModernTimeEntryController::class, 'logs'])->name('api.face-registration.logs');
+    });
 // Route::get('/emp-sig',[CoasController::class,'empSig'])->name('empSig');
 
 Route::prefix('app')->group(function() {

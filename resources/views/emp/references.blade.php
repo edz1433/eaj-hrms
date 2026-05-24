@@ -14,7 +14,7 @@
 
         <div class="flex items-center gap-3">
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 dark:bg-teal-900/30">
-                <i class="fas fa-address-book text-teal-600 dark:text-teal-400 text-sm"></i>
+                <i data-lucide="contact-round" class="h-4 w-4 text-teal-600 dark:text-teal-400"></i>
             </div>
             <div>
                 <h1 class="text-base font-bold text-foreground">References</h1>
@@ -24,7 +24,7 @@
 
         <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
-                <i class="fas fa-users text-teal-500 text-xs opacity-70"></i>
+                <i data-lucide="users" class="h-3.5 w-3.5 text-teal-500 opacity-70"></i>
                 <span class="text-xs font-bold uppercase tracking-wide text-foreground">Character References</span>
             </div>
             <div class="p-5 space-y-4">

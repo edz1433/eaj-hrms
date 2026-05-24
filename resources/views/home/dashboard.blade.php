@@ -3,6 +3,14 @@
 
 @section('body')
 <div x-data="dashboardApp()" x-init="initDashboard()" class="space-y-6">
+    @if($canTogglePersonalDashboard ?? false)
+        <div class="flex justify-end">
+            <div class="inline-flex rounded-lg border border-border/60 bg-card p-1 text-xs font-semibold shadow-sm">
+                <a href="{{ route('dashboard') }}" class="rounded-md bg-primary px-3 py-1.5 text-primary-foreground no-underline shadow-sm">HR Dashboard</a>
+                <a href="{{ route('dashboard', ['dashboard' => 'personal']) }}" class="rounded-md px-3 py-1.5 text-muted-foreground no-underline transition hover:bg-muted hover:text-foreground">Personal Dashboard</a>
+            </div>
+        </div>
+    @endif
     
     {{-- ── Enhanced Hero Section with Glassmorphism ─────────────────────────────── --}}
     <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-card to-background border shadow-xl">

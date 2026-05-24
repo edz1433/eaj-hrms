@@ -22,7 +22,7 @@ class Employee extends Authenticatable
         'add_region', 'add_prov', 'add_zcode', 'padd_block', 'padd_street', 'padd_village', 'padd_brgy',
         'padd_city', 'padd_region', 'padd_prov', 'padd_zcode', 'sl', 'vl', 'mat_leave', 'special_pl', 'solo_pl',
         'study_leave','vawc_leave','rehab_leave','benefits_leave','calamity_leave','adopt_leave','servcred_leave', 'well_leave',
-        'esign', 'dpn', 'stat_1', 'strat_function', 'em_supervise', 'item_plan', 'title_suffix', 'f1', 'f2', 'f3'
+        'esign', 'dpn', 'stat_1', 'strat_function', 'em_supervise', 'item_plan', 'title_suffix'
     ];
     
     protected $hidden = [

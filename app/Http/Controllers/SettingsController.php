@@ -84,16 +84,19 @@ class SettingsController extends Controller
             'records_office_email' => 'nullable|email',
             'job_portal_email'     => 'nullable|email',
             'system_name'          => 'nullable|string|max:100',
+            'employee_id_prefix'   => 'nullable|string|max:20|regex:/^[A-Za-z0-9]*$/',
             'maintenance'          => 'nullable|boolean',
         ]);
 
         $data['system_name'] = trim($data['system_name'] ?? '') ?: 'EAJ HRMS';
+        $data['employee_id_prefix'] = strtoupper(trim($data['employee_id_prefix'] ?? '')) ?: 'EMP';
 
         $setting = Setting::singleton();
         $setting->update($data);
 
         return $this->settingsResponse($request, 'General settings saved.', [
             'system_name' => $setting->fresh()->system_name ?: 'EAJ HRMS',
+            'employee_id_prefix' => $setting->fresh()->employeeIdPrefix(),
         ]);
     }
 
@@ -110,6 +113,8 @@ class SettingsController extends Controller
             'id_card_primary_color'=> 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
             'id_card_accent_color' => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
             'id_card_logo'         => 'nullable|image|max:2048',
+            'dtr_header'           => 'nullable|image|max:4096',
+            'leave_form_header'    => 'nullable|image|max:4096',
         ]);
 
         $presetColors = [
@@ -153,15 +158,15 @@ class SettingsController extends Controller
         ];
 
         if ($request->hasFile('id_card_logo')) {
-            $logo = $request->file('id_card_logo');
-            $directory = public_path('Uploads/Settings');
-            if (!is_dir($directory)) {
-                mkdir($directory, 0755, true);
-            }
+            $update['id_card_logo'] = $this->storeSettingsImage($request->file('id_card_logo'), 'id-card-logo');
+        }
 
-            $fileName = 'id-card-logo-' . time() . '-' . bin2hex(random_bytes(4)) . '.' . $logo->getClientOriginalExtension();
-            $logo->move($directory, $fileName);
-            $update['id_card_logo'] = $fileName;
+        if ($request->hasFile('dtr_header')) {
+            $update['dtr_header'] = $this->storeSettingsImage($request->file('dtr_header'), 'dtr-header');
+        }
+
+        if ($request->hasFile('leave_form_header')) {
+            $update['leave_form_header'] = $this->storeSettingsImage($request->file('leave_form_header'), 'leave-form-header');
         }
 
         $settings->update($update);
@@ -181,6 +186,10 @@ class SettingsController extends Controller
                     'primary_color' => $settings->id_card_primary_color,
                     'accent_color' => $settings->id_card_accent_color,
                     'logo' => $settings->id_card_logo ? asset('Uploads/Settings/' . $settings->id_card_logo) : null,
+                ],
+                'document_headers' => [
+                    'dtr_header' => $settings->dtrHeaderUrl(),
+                    'leave_form_header' => $settings->leaveFormHeaderUrl(),
                 ],
             ]);
         }
@@ -262,6 +271,19 @@ class SettingsController extends Controller
         }
 
         return back()->with('success', $message);
+    }
+
+    private function storeSettingsImage($file, string $prefix): string
+    {
+        $directory = public_path('Uploads/Settings');
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        $fileName = $prefix . '-' . time() . '-' . bin2hex(random_bytes(4)) . '.' . $file->getClientOriginalExtension();
+        $file->move($directory, $fileName);
+
+        return $fileName;
     }
 
     private function ensureMenuSettings(): void

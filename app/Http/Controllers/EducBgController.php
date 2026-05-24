@@ -30,16 +30,16 @@ class EducBgController extends Controller
     }
 
     public function columnStat($empid){
-        $familyBg = FamilyBg::where('empid', $empid)->first();
-        $educBg = EducBg::where('empid', $empid)->first();
+        $familyBg = FamilyBg::firstOrCreate(['empid' => $empid]);
+        $educBg = EducBg::firstOrCreate(['empid' => $empid]);
         $eligibility = Eligibility::where('empid', $empid)->get();
         $workexperience = WorkExperience::where('empid', $empid)->get();
         $voluntaryworks = VoluntaryWork::where('empid', $empid)->get();
         $learningdev = LearningDev::where('empid', $empid)->get();
-        $otherinfo = OtherInfo::where('empid', $empid)->first();
-        $infoquestion = InfoQuestion::where('empid', $empid)->first();
-        $references = PdsReference::where('empid', $empid)->first();
-        $govids= GovId::where('empid', $empid)->first();
+        $otherinfo = OtherInfo::firstOrCreate(['empid' => $empid]);
+        $infoquestion = InfoQuestion::firstOrCreate(['empid' => $empid]);
+        $references = PdsReference::firstOrCreate(['empid' => $empid]);
+        $govids= GovId::firstOrCreate(['empid' => $empid]);
         
         $columnstatus = [
             'colfamstat' => $familyBg->famhasAnyValue(),
@@ -60,9 +60,9 @@ class EducBgController extends Controller
     public function educbg($id = null)
     {
         $guard = $this->getGuard();
-        $empid = $id ?? auth()->guard($guard)->user()->id;
+        $empid = pdsRouteEmployeeId($id, $guard);
         $employee = Employee::findOrFail($empid);
-        $educBg = EducBg::where('empid', $employee->emp_ID)->first();
+        $educBg = EducBg::firstOrCreate(['empid' => $employee->emp_ID]);
         $columnstatus = $this->columnStat($employee->emp_ID);
 
         return view("emp.educational-bg", compact('guard', 'empid', 'employee', 'educBg', 'columnstatus'));
@@ -87,7 +87,7 @@ class EducBgController extends Controller
         ]);
     
         $empid = $request->input('empid');
-        $educBg = EducBg::where('empid', $empid)->first();
+        $educBg = EducBg::firstOrCreate(['empid' => $empid]);
     
         if (!$educBg) {
             return response()->json(['success' => false, 'message' => 'Record not found.']);
@@ -211,7 +211,7 @@ class EducBgController extends Controller
         ]);
     
         $empid = $request->input('empid');
-        $educBg = EducBg::where('empid', $empid)->first();
+        $educBg = EducBg::firstOrCreate(['empid' => $empid]);
     
         if (!$educBg) {
             return response()->json(['success' => false, 'message' => 'Graduate studies record not found.']);
@@ -315,3 +315,5 @@ class EducBgController extends Controller
     }
     
 }
+
+

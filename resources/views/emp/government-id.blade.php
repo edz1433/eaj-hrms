@@ -12,7 +12,7 @@
 
         <div class="flex items-center gap-3">
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
-                <i class="fas fa-id-card text-blue-600 dark:text-blue-400 text-sm"></i>
+                <i data-lucide="id-card" class="h-4 w-4 text-blue-600 dark:text-blue-400"></i>
             </div>
             <div>
                 <h1 class="text-base font-bold text-foreground">Government Issued ID</h1>
@@ -22,7 +22,7 @@
 
         <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
-                <i class="fas fa-id-badge text-blue-500 text-xs opacity-70"></i>
+                <i data-lucide="badge" class="h-3.5 w-3.5 text-blue-500 opacity-70"></i>
                 <span class="text-xs font-bold uppercase tracking-wide text-foreground">ID Details</span>
             </div>
             <div class="p-5">

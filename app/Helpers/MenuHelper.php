@@ -24,6 +24,10 @@ class MenuHelper
                         'label' => 'Employee Records',
                         'icon'  => 'id-card',    // personal identification
                     ],
+                    'face_registration' => [
+                        'label' => 'Face Registration',
+                        'icon'  => 'shield-check',
+                    ],
                     'pds' => [
                         'label' => 'Personal Data Sheet',
                         'icon'  => 'file-text',  // document with text
@@ -43,19 +47,14 @@ class MenuHelper
                 ],
             ],
 
-            'leave' => [
+            'leave_applications' => [
+                'label' => 'Leave Application',
+                'icon'  => 'file-pen-line',
+            ],
+
+            'leave_credits' => [
                 'label' => 'Leave Management',
                 'icon'  => 'calendar-check',    // calendar with checkmark
-                'children' => [
-                    'leave_applications' => [
-                        'label' => 'Leave Applications',
-                        'icon'  => 'file-plus', // add document
-                    ],
-                    'leave_credits' => [
-                        'label' => 'Leave Credits',
-                        'icon'  => 'wallet',    // credit balance
-                    ],
-                ],
             ],
 
             'payroll' => [
@@ -89,10 +88,6 @@ class MenuHelper
                     'office_management' => [
                         'label' => 'Office Management',
                         'icon'  => 'building',  // office building
-                    ],
-                    'deans_list' => [
-                        'label' => 'Deans List',
-                        'icon'  => 'graduation-cap',
                     ],
                     'system_settings' => [
                         'label' => 'System Settings',
@@ -141,6 +136,7 @@ class MenuHelper
             'HR Management' => [
                 'dashboard'          => 'Dashboard',
                 'employee_records'   => 'Employee Records',
+                'face_registration'  => 'Face Registration',
                 'pds'                => 'Personal Data Sheet',
             ],
             'Attendance' => [
@@ -149,8 +145,8 @@ class MenuHelper
                 'tardiness'          => 'Tardiness & Absences',
             ],
             'Leave' => [
-                'leave_applications' => 'Leave Applications',
-                'leave_credits'      => 'Leave Credits',
+                'leave_applications' => 'Leave Application',
+                'leave_credits'      => 'Leave Management',
             ],
             'Payroll' => [
                 'payroll'            => 'Payroll',
@@ -162,7 +158,6 @@ class MenuHelper
             'Administration' => [
                 'user_management'    => 'User Management',
                 'office_management'  => 'Office Management',
-                'deans_list'         => 'Deans List',
                 'system_settings'    => 'System Settings',
             ],
             'Reports' => [
@@ -180,17 +175,17 @@ class MenuHelper
         return [
             'dashboard'          => 'dashboard',
             'employee_records'   => 'employees',
+            'face_registration'  => 'time-entry.register',
             'pds'                => 'empPDS',
             'dtr'                => 'dtr-read',
             'tardiness'          => 'readTiredness',
-            'leave_applications' => 'leaveStatus',
+            'leave_applications' => 'leavesReadEmp',
             'leave_credits'      => 'leavesRead',
             'payroll'            => 'payroll',
             'job_postings'       => 'jlist',
             'job_applications'   => 'appList',
             'user_management'    => 'ulist',
             'office_management'  => 'officeList',
-            'deans_list'         => 'deanlist',
             'system_settings'    => 'settings',
             'reports'            => 'systemPerformance',
             'events'             => 'eventIndex',
@@ -202,18 +197,18 @@ class MenuHelper
         return [
             'dashboard'          => ['dashboard', 'myaccount', 'readPending'],
             'employee_records'   => ['employees', 'empCreate', 'empEdit', 'empUpdate', 'empDelete'],
+            'face_registration'  => ['time-entry.register'],
             'pds'                => ['empPDS', 'PDS', 'familybg', 'educbg', 'eligibility*', 'work-experience*', 'voluntary-work*', 'learning-dev*', 'otherInfo', 'infoQuestion', 'references', 'govids', 'signature'],
             'dtr'                => ['dtr-read'],
             'official_time'      => ['OfficialTimeRead', 'OfficialTimeCreate'],
             'tardiness'          => ['readTiredness', 'tirednessSearch'],
-            'leave_applications' => ['leaveStatus', 'leavesReadEmp', 'leaveCreate', 'leaveUpdate', 'leaveDelete*'],
-            'leave_credits'      => ['leavesRead', 'leaveCredits*'],
+            'leave_applications' => ['leavesReadEmp', 'leaveCreate', 'leaveUpdate', 'leaveDelete*'],
+            'leave_credits'      => ['leavesRead', 'leaveCredits*', 'leaveStatus', 'historyRead', 'previewLeave'],
             'payroll'            => ['payroll'],
             'job_postings'       => ['jlist', 'jCreate', 'jEdit', 'jUpdate', 'jDelete'],
             'job_applications'   => ['appList', 'updateStatus', 'setCtrlNo'],
             'user_management'    => ['ulist', 'uCreate', 'uEdit', 'uUpdate', 'uDelete'],
             'office_management'  => ['officeList', 'officeCreate', 'officeEdit', 'officeUpdate', 'officeDelete'],
-            'deans_list'         => ['deanlist', 'deanCreate', 'deanEdit', 'deanUpdate', 'deanDelete'],
             'system_settings'    => ['settings', 'settings.*'],
             'reports'            => ['systemPerformance'],
             'events'             => ['eventIndex', 'event*'],
@@ -228,9 +223,16 @@ class MenuHelper
         return [
             'user_management',
             'office_management',
-            'deans_list',
             'system_settings',
         ];
+    }
+
+    public static function roleDefaults(?string $role): array
+    {
+        return match ($role) {
+            'HR Administrator', 'HR Staff' => ['leave_credits'],
+            default => [],
+        };
     }
 
     /**
@@ -249,7 +251,17 @@ class MenuHelper
             return true;
         }
 
-        $permission = \App\Models\UserMenuPermission::where('user_id', $user->id)->first();
+        if (in_array($menuKey, self::roleDefaults($user->role), true)) {
+            return true;
+        }
+
+        static $permissionsByUser = [];
+
+        if (!array_key_exists($user->id, $permissionsByUser)) {
+            $permissionsByUser[$user->id] = \App\Models\UserMenuPermission::where('user_id', $user->id)->first();
+        }
+
+        $permission = $permissionsByUser[$user->id];
 
         if (!$permission || !$permission->menu_keys) {
             return false;

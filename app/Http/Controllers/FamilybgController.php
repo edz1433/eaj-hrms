@@ -30,16 +30,16 @@ class FamilybgController extends Controller
     }
     
     public function columnStat($empid){
-        $familyBg = FamilyBg::where('empid', $empid)->first();
-        $educBg = EducBg::where('empid', $empid)->first();
+        $familyBg = FamilyBg::firstOrCreate(['empid' => $empid]);
+        $educBg = EducBg::firstOrCreate(['empid' => $empid]);
         $eligibility = Eligibility::where('empid', $empid)->get();
         $workexperience = WorkExperience::where('empid', $empid)->get();
         $voluntaryworks = VoluntaryWork::where('empid', $empid)->get();
         $learningdev = LearningDev::where('empid', $empid)->get();
-        $otherinfo = OtherInfo::where('empid', $empid)->first();
-        $infoquestion = InfoQuestion::where('empid', $empid)->first();
-        $references = PdsReference::where('empid', $empid)->first();
-        $govids= GovId::where('empid', $empid)->first();
+        $otherinfo = OtherInfo::firstOrCreate(['empid' => $empid]);
+        $infoquestion = InfoQuestion::firstOrCreate(['empid' => $empid]);
+        $references = PdsReference::firstOrCreate(['empid' => $empid]);
+        $govids= GovId::firstOrCreate(['empid' => $empid]);
         
         $columnstatus = [
             'colfamstat' => $familyBg->famhasAnyValue(),
@@ -59,9 +59,9 @@ class FamilybgController extends Controller
     
     public function familybg($id = null){
         $guard = $this->getGuard();
-        $empid = ($id) ? $id : auth()->guard($guard)->user()->id;
-        $employee = Employee::find($empid);
-        $familyBg = FamilyBg::where('empid', $employee->emp_ID)->first();
+        $empid = pdsRouteEmployeeId($id, $guard);
+        $employee = Employee::findOrFail($empid);
+        $familyBg = FamilyBg::firstOrCreate(['empid' => $employee->emp_ID]);
         $columnstatus = $this->columnStat($employee->emp_ID);
 
         return view("emp.family-bg", compact('guard', 'empid', 'employee', 'familyBg', 'columnstatus'));
@@ -142,3 +142,5 @@ class FamilybgController extends Controller
     }
 
 }
+
+

@@ -1,69 +1,55 @@
 <script>
-    $(document).ready(function() {
-        $('input[type=radio]').on('change', function() {
-            const index = $(this).attr('name').match(/\d+/)[0];
+document.addEventListener('DOMContentLoaded', () => {
+    const empid = @json($empid);
+    const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const timers = new Map();
 
-            if ($(this).val() === '1') {
-                $(`#details-${index}`).prop('readonly', false).val('');
-                $(`#details-${index}`).parent().show();
-            } else {
-                $(`#details-${index}`).prop('readonly', true).val('');
-                $(`#details-${index}`).parent().hide();
-            }
-        });
+    function sanitize(field) {
+        field.value = String(field.value || '').replace(/,/g, '');
+    }
 
-        $('input[type=radio]:checked').each(function() {
-            const index = $(this).attr('name').match(/\d+/)[0];
-            if ($(this).val() === '1') {
-                $(`#details-${index}`).prop('readonly', false).parent().show();
-            } else {
-                $(`#details-${index}`).prop('readonly', true).val('').parent().hide();
-            }
-        });
-    });
-</script>
-<script>
-    $.ajaxSetup({
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        }
-    });
+    async function saveField(field) {
+        if (!field.name) return;
+        sanitize(field);
 
-    $(document).ready(function() {
-        var empid = {{ $empid }};
-        
-        $('.updated-data').on('change', function() {
-            var column = $(this).attr('name');
-            var index = $(this).data('array');
-            var value = $(this).val();
-
-            $.ajax({
-                url: '{{ route("update.govids") }}',
-                type: 'POST',
-                data: {
-                    empid: empid,
-                    column: column,
-                    index: index,
-                    value: value
+        try {
+            const response = await fetch('{{ route("update.govids") }}', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
-                success: function(response) {
-                    if (response.success) {
-                        //console.log('Update successful!');
-                    } else {
-                        console.log('Update failed!');
-                    }
-                },
-                error: function(xhr) {
-                    console.log('Error:', xhr.responseText);
-                }
+                body: JSON.stringify({
+                    empid,
+                    column: field.name,
+                    index: field.dataset.array,
+                    value: field.value,
+                }),
             });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Unable to save government ID.');
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function queueSave(field, delay = 500) {
+        const key = `${field.name}-${field.dataset.array || ''}`;
+        window.clearTimeout(timers.get(key));
+        timers.set(key, window.setTimeout(() => saveField(field), delay));
+    }
+
+    document.querySelectorAll('.updated-data').forEach(field => {
+        field.addEventListener('input', () => {
+            sanitize(field);
+            queueSave(field);
         });
+        field.addEventListener('change', () => queueSave(field, 0));
+        field.addEventListener('blur', () => queueSave(field, 0));
     });
-</script>
-<script>
-    document.querySelectorAll('.input-details').forEach(input => {
-        input.addEventListener('input', function() {
-            this.value = this.value.replace(/,/g, '');
-        });
-    });
+});
 </script>

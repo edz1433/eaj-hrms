@@ -7,32 +7,7 @@
     <title>{{ $sysName ?? 'EAJ HRMS' }} - Sign In</title>
     <link rel="shortcut icon" href="{{ asset('template/img/CPSU_L.png') }}">
 
-    <!-- Tailwind CSS (CDN) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: { DEFAULT: '#16a34a', dark: '#15803d', light: '#dcfce7' },
-                        gold:  '#FFCB2C',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-                    },
-                    keyframes: {
-                        'fade-up': {
-                            '0%':   { opacity: '0', transform: 'translateY(16px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' },
-                        },
-                    },
-                    animation: {
-                        'fade-up': 'fade-up 0.4s ease both',
-                    },
-                }
-            }
-        }
-    </script>
+    @vite(['resources/css/app.css'])
 
     <!-- Google Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -79,13 +54,13 @@
                     <span class="text-yellow-300">Streamlining HR.</span>
                 </h1>
                 <p class="mt-4 text-green-100 text-base max-w-sm leading-relaxed">
-                    Central Philippine State University's integrated Human Resource Information System &mdash;
-                    from personnel records to performance management, all in one place.
+                      Central Philippine State University's integrated Human Resource Information System &mdash;
+                      from personnel records to daily HR operations, all in one place.
                 </p>
 
                 {{-- Feature pills --}}
                 <div class="mt-8 flex flex-wrap gap-3">
-                    @foreach(['DTR & Attendance', 'Leave Management', 'PDS Records', 'SPMS / Performance', 'Payroll Link', 'Recruitment'] as $feat)
+                    @foreach(['DTR & Attendance', 'Leave Management', 'PDS Records', 'Reports & Analytics', 'Payroll Link', 'Recruitment'] as $feat)
                     <span class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
                         <i class="fas fa-check text-yellow-300 text-[10px]"></i> {{ $feat }}
                     </span>

@@ -41,7 +41,7 @@ return new class extends Migration
             // Administration
             ['menu_key' => 'user_management',   'label' => 'User Management',        'group' => 'Administration',   'sort_order' => 12],
             ['menu_key' => 'office_management', 'label' => 'Office Management',      'group' => 'Administration',   'sort_order' => 13],
-            ['menu_key' => 'deans_list',        'label' => 'Deans List',             'group' => 'Administration',   'sort_order' => 14],
+            ['menu_key' => 'system_settings',   'label' => 'System Settings',        'group' => 'Administration',   'sort_order' => 14],
             // Reports
             ['menu_key' => 'reports',           'label' => 'Reports & Analytics',    'group' => 'Reports',          'sort_order' => 15],
             ['menu_key' => 'events',            'label' => 'Events & Calendar',      'group' => 'Reports',          'sort_order' => 16],

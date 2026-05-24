@@ -19,37 +19,120 @@ class LeaveCreditController extends Controller
         }
     }  
 
-    public function leavesRead($id = null){
+    private function resolveAuthenticatedEmployee()
+    {
+        $guard = $this->getGuard();
+        $user = auth()->guard($guard)->user();
+
+        if (!$user) {
+            abort(403);
+        }
+
+        if ($guard === 'employee') {
+            return $user;
+        }
+
+        if (!$user->emp_ID) {
+            abort(403, 'This user account is not linked to an employee record.');
+        }
+
+        return Employee::where('emp_ID', $user->emp_ID)->firstOrFail();
+    }
+
+    private function resolveManagedEmployee($id = null)
+    {
+        if ($id) {
+            return Employee::findOrFail($id);
+        }
+
+        $guard = $this->getGuard();
+        $user = auth()->guard($guard)->user();
+
+        if ($guard === 'web' && $user?->emp_ID) {
+            return Employee::where('emp_ID', $user->emp_ID)->firstOrFail();
+        }
+
+        return Employee::where('emp_status', 1)->orderBy('lname')->orderBy('fname')->firstOrFail();
+    }
+
+    private function resolveCreditDate($date = null)
+    {
+        $date = $date ?: Carbon::now()->format('Y-m');
+
+        if (preg_match('/^\d{4}-\d{2}$/', $date)) {
+            $date .= '-01';
+        }
+
+        return Carbon::parse($date)->startOfMonth()->toDateString();
+    }
+
+    public function leavesRead(Request $request, $id = null){
         $emplalls = Employee::where('emp_status', 1)->get();
         $guard = $this->getGuard();
-        $empid = ($id) ? $id : auth()->guard($guard)->user()->id;
-        $employee = Employee::find($empid);
-        $leaves = LeaveCredit::where('empid', $employee->emp_ID)
-        ->join('users', 'leave_credits.add_by', '=', 'users.id')
-        ->select('leave_credits.*', 'users.fname', 'users.mname', 'users.lname')
-        ->orderBy('leave_credits.created_at', 'desc')
-        ->get();    
+        $employee = $this->resolveManagedEmployee($id);
+        $empid = $employee->id;
+        $creditBase = LeaveCredit::where('empid', $employee->emp_ID);
+        $creditStats = [
+            'all' => (clone $creditBase)->count(),
+            'starting' => (clone $creditBase)->where('stat', 0)->count(),
+            'added' => (clone $creditBase)->where('stat', 1)->where('days', '>', 0)->count(),
+            'deducted' => (clone $creditBase)->where('stat', 1)->where('days', 0)->count(),
+        ];
 
-        return view('leaves.emp-leaves', compact('leaves', 'guard', 'employee', 'emplalls', 'empid'));
+        $leaves = LeaveCredit::where('empid', $employee->emp_ID)
+            ->join('users', 'leave_credits.add_by', '=', 'users.id')
+            ->select('leave_credits.*', 'users.fname', 'users.mname', 'users.lname');
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $leaves->where(function ($query) use ($search) {
+                $query->where('leave_credits.remarks', 'like', "%{$search}%")
+                    ->orWhere('leave_credits.date', 'like', "%{$search}%")
+                    ->orWhere('leave_credits.earn_sl', 'like', "%{$search}%")
+                    ->orWhere('leave_credits.earn_vl', 'like', "%{$search}%")
+                    ->orWhere('users.fname', 'like', "%{$search}%")
+                    ->orWhere('users.lname', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->type === 'starting') {
+            $leaves->where('leave_credits.stat', 0);
+        } elseif ($request->type === 'added') {
+            $leaves->where('leave_credits.stat', 1)->where('leave_credits.days', '>', 0);
+        } elseif ($request->type === 'deducted') {
+            $leaves->where('leave_credits.stat', 1)->where('leave_credits.days', 0);
+        }
+
+        $leaves = $leaves
+            ->orderBy('leave_credits.created_at', 'desc')
+            ->paginate((int) $request->input('per_page', 10))
+            ->withQueryString();
+
+        $leaveMode = 'management';
+
+        return view('leaves.emp-leaves', compact('leaves', 'guard', 'employee', 'emplalls', 'empid', 'creditStats', 'leaveMode'));
     }
     
     public function leavesReadEmp(){
         $guard = $this->getGuard();
-        $empid = auth()->guard($guard)->user()->id;
-        $employee = Employee::find($empid);
+        $employee = $this->resolveAuthenticatedEmployee();
+        $empid = $employee->id;
         $leaves = LeaveCredit::where('empid', $employee->emp_ID)
         ->join('users', 'leave_credits.add_by', '=', 'users.id')
         ->select('leave_credits.*', 'users.fname', 'users.mname', 'users.lname')
         ->orderBy('leave_credits.created_at', 'desc')
         ->get();    
 
-        return view('leaves.emp-leaves', compact('leaves', 'guard', 'employee'));
+        $leaveMode = 'personal';
+
+        return view('leaves.emp-leaves', compact('leaves', 'guard', 'employee', 'empid', 'leaveMode'));
     }
 
     public function leavesCreate(Request $request)
     {
         $authid = auth()->user()->id;
         $currentDate = Carbon::now()->format('Y-m');
+        $days = $request->filled('days') ? $request->days : 0;
         
         $request->validate([
             'empid' => 'required|exists:employees,id',
@@ -71,13 +154,13 @@ class LeaveCreditController extends Controller
     
             $leavecredit = LeaveCredit::create([
                 'empid' => $employee->emp_ID,
-                'days' => $request->days,
+                'days' => $days,
                 'earn_sl' => $request->sl,
                 'earn_vl' => $request->vl,
                 'remarks' => $request->remarks,
-                'date' => $request->date ?? $currentDate,
+                'date' => $this->resolveCreditDate($request->date ?? $currentDate),
                 'add_by' => $authid,
-                'stat' => $request->days ? 1 : 0,
+                'stat' => $days > 0 ? 1 : 0,
             ]);
 
             Notification::create([
@@ -114,7 +197,7 @@ class LeaveCreditController extends Controller
             'earn_sl' => $request->sl,
             'earn_vl' => $request->vl,
             'remarks' => $request->remarks,
-            'date' => $request->date ?? $currentDate,
+            'date' => $this->resolveCreditDate($request->date ?? $currentDate),
             'add_by' => $authid,
             'stat' => 1,
         ]);
@@ -172,7 +255,7 @@ class LeaveCreditController extends Controller
                 'earn_sl' => $request->sl,
                 'earn_vl' => $request->vl,
                 'remarks' => $request->remarks,
-                'date' => isset($request->date) ? $request->date : $currentDate,
+                'date' => $this->resolveCreditDate($request->date ?? $currentDate),
                 'add_by' => $authid,
                 'stat' => 1,
             ]);
@@ -188,6 +271,7 @@ class LeaveCreditController extends Controller
     {
         $authid = auth()->user()->id;
         $leavecread = LeaveCredit::find($request->lcid);
+        $days = $request->filled('days') ? $request->days : 0;
 
         $currentDate = Carbon::now()->format('Y-m');
         $request->validate([
@@ -209,13 +293,13 @@ class LeaveCreditController extends Controller
             
             LeaveCredit::where('id', $request->lcid)
             ->update([
-                'days' => $request->days,
+                'days' => $days,
                 'earn_sl' => $request->sl,
                 'earn_vl' => $request->vl,
                 'remarks' => $request->remarks,
-                'date' => isset($request->date) ? $request->date : $currentDate,
+                'date' => $this->resolveCreditDate($request->date ?? $currentDate),
                 'add_by' => $authid,
-                'stat' => ($request->days == null) ? 0 : 1,
+                'stat' => $days > 0 ? 1 : 0,
             ]);
 
         } else {

@@ -70,7 +70,7 @@
                 <div class="form-row mt-3 lbel" data-index="${newRowIndex}">
                     <div class="col-md-12">
                         <button type="button" class="btn btn-outline-danger btn-sm btn-delete" style="float: right;">
-                            <i class="fas fa-times fa-sm"></i>
+                            <i data-lucide="x" class="h-3.5 w-3.5"></i>
                         </button>
                     </div>
                     <div class="col-md-4">
@@ -101,6 +101,7 @@
             `;
             $('#college-container').append(newRow);
             updateData();
+            window.refreshUi?.(document.getElementById('college-container'));
         });
 
         function updateGraduateData() {
@@ -169,7 +170,7 @@
                 <div class="form-row mt-3 lbel" data-index="${newRowIndex}">
                     <div class="col-md-12">
                         <button type="button" class="btn btn-outline-danger btn-sm btn-delete-grad" style="float: right;">
-                            <i class="fas fa-times fa-sm"></i>
+                            <i data-lucide="x" class="h-3.5 w-3.5"></i>
                         </button>
                     </div>
                     <div class="col-md-4">
@@ -200,6 +201,7 @@
             `;
             $('#graduate-container').append(newRow);
             updateGraduateData();
+            window.refreshUi?.(document.getElementById('graduate-container'));
         });
 
         // Detect changes in input fields and update data

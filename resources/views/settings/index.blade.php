@@ -25,6 +25,8 @@
     $idPrimary = $setting->id_card_primary_color ?: ($setting->primary_color ?: '#C9407A');
     $idAccent = $setting->id_card_accent_color ?: ($setting->accent_color ?: '#fce7f3');
     $idLogoUrl = $setting->id_card_logo ? asset('Uploads/Settings/' . $setting->id_card_logo) : null;
+    $dtrHeaderUrl = $setting->dtrHeaderUrl();
+    $leaveFormHeaderUrl = $setting->leaveFormHeaderUrl();
     $sectorMeta = [
         'government' => ['bg' => '#dbeafe', 'color' => '#1d4ed8'],
         'education'  => ['bg' => '#d1fae5', 'color' => '#065f46'],
@@ -308,6 +310,22 @@
                                        value="{{ old('system_name', $setting->system_name) }}"
                                        placeholder="{{ $sysName ?? 'EAJ HRMS' }}" class="block h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20 disabled:opacity-60">
                             </div>
+                            <div>
+                                <label class="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employee ID Start Code</label>
+                                <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
+                                    <input type="text" name="employee_id_prefix"
+                                           value="{{ old('employee_id_prefix', $setting->employeeIdPrefix()) }}"
+                                           maxlength="20"
+                                           pattern="[A-Za-z0-9]*"
+                                           placeholder="EMP"
+                                           class="block h-10 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold uppercase text-foreground outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+                                           oninput="this.value = this.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase(); updateEmployeeIdPreview(this.value);">
+                                    <div class="flex h-10 items-center rounded-xl border border-border bg-muted/30 px-3 font-mono text-sm font-bold text-foreground">
+                                        <span id="employee-id-prefix-preview">{{ $setting->employeeIdPrefix() }}</span>0001
+                                    </div>
+                                </div>
+                                <p class="mt-1.5 text-xs text-muted-foreground">New employee records will use this prefix, for example <span class="font-mono">{{ $setting->employeeIdPrefix() }}0001</span>.</p>
+                            </div>
                             <div class="flex items-center justify-between gap-6 rounded-2xl border border-border bg-muted/20 px-5 py-4">
                                 <div class="min-w-0 flex-1">
                                     <p class="text-sm font-semibold text-foreground">Maintenance Mode</p>
@@ -496,10 +514,10 @@
                                     <label class="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">ID Design</label>
                                     <div class="grid gap-3 md:grid-cols-3">
                                         @foreach($idCardTemplates as $key => $template)
-                                            <label class="group cursor-pointer rounded-2xl border-2 border-border bg-background p-4 transition hover:border-primary/40 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                            <label class="id-card-template-card group cursor-pointer rounded-2xl border-2 border-border bg-background p-4 transition hover:border-primary/40">
                                                 <input type="radio" name="id_card_template" value="{{ $key }}" class="sr-only" {{ $activeIdTemplate === $key ? 'checked' : '' }}>
                                                 <span class="flex items-center gap-3">
-                                                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition group-has-[:checked]:bg-primary group-has-[:checked]:text-primary-foreground">
+                                                    <span class="id-card-template-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition">
                                                         <i data-lucide="{{ $template['icon'] }}" class="h-4 w-4"></i>
                                                     </span>
                                                     <span class="min-w-0">
@@ -586,6 +604,53 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Document headers --}}
+                    <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+                        <div class="border-b border-border/60 bg-muted/20 px-6 py-5 flex items-center gap-3.5">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                <i data-lucide="image-up" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-foreground">Document Headers</p>
+                                <p class="text-xs text-muted-foreground mt-0.5">Upload the header images used in generated DTR and leave application PDFs.</p>
+                            </div>
+                        </div>
+
+                        <div class="grid gap-6 p-6 lg:grid-cols-2">
+                            <div class="rounded-2xl border border-border bg-background p-4">
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <div>
+                                        <p class="text-sm font-semibold text-foreground">DTR Header</p>
+                                        <p class="mt-0.5 text-xs text-muted-foreground">Used in Daily Time Record PDFs.</p>
+                                    </div>
+                                    <i data-lucide="calendar-clock" class="h-4 w-4 text-muted-foreground"></i>
+                                </div>
+                                <div class="mb-3 overflow-hidden rounded-xl border border-border bg-white">
+                                    <img id="dtr-header-preview" src="{{ $dtrHeaderUrl }}" alt="DTR header preview" class="h-24 w-full object-contain">
+                                </div>
+                                <input type="file" name="dtr_header" id="dtr_header" accept="image/*"
+                                       class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-xl file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary-foreground hover:file:bg-primary/90"
+                                       onchange="previewDocumentHeader(this, 'dtr-header-preview')">
+                            </div>
+
+                            <div class="rounded-2xl border border-border bg-background p-4">
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <div>
+                                        <p class="text-sm font-semibold text-foreground">Leave Form Header</p>
+                                        <p class="mt-0.5 text-xs text-muted-foreground">Used in generated leave application forms.</p>
+                                    </div>
+                                    <i data-lucide="file-text" class="h-4 w-4 text-muted-foreground"></i>
+                                </div>
+                                <div class="mb-3 overflow-hidden rounded-xl border border-border bg-white">
+                                    <img id="leave-form-header-preview" src="{{ $leaveFormHeaderUrl }}" alt="Leave form header preview" class="h-24 w-full object-contain">
+                                </div>
+                                <input type="file" name="leave_form_header" id="leave_form_header" accept="image/*"
+                                       class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-xl file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary-foreground hover:file:bg-primary/90"
+                                       onchange="previewDocumentHeader(this, 'leave-form-header-preview')">
                             </div>
                         </div>
                     </div>
@@ -849,6 +914,9 @@ function ajaxSubmit(form, url, method = 'POST') {
             if (data.system_name) {
                 applySystemName(data.system_name);
             }
+            if (data.employee_id_prefix) {
+                updateEmployeeIdPreview(data.employee_id_prefix);
+            }
             showToast(data.message || 'Saved successfully');
         } else {
             showToast(data.message || 'An error occurred', 'error');
@@ -867,6 +935,19 @@ function applySystemName(systemName) {
 
     const pageTitle = @json(trim($__env->yieldContent('pageTitle')));
     document.title = pageTitle ? `${name} - ${pageTitle}` : name;
+}
+
+function updateEmployeeIdPreview(prefix) {
+    const cleanPrefix = String(prefix || 'EMP').replace(/[^A-Za-z0-9]/g, '').toUpperCase() || 'EMP';
+    document.getElementById('employee-id-prefix-preview')?.replaceChildren(document.createTextNode(cleanPrefix));
+}
+
+function previewDocumentHeader(input, previewId) {
+    const file = input.files?.[0];
+    const preview = document.getElementById(previewId);
+    if (!file || !preview) return;
+
+    preview.src = URL.createObjectURL(file);
 }
 
 // ========== TAB SWITCHING ==========
@@ -893,6 +974,7 @@ document.querySelectorAll('.sg-tab, .sg-mob-tab').forEach(btn =>
     activateTab(hashTab || saved || 'org');
     updateOrgTypeCards();
     updateEmpTypeChips();
+    updateIdCardTemplateCards();
 })();
 
 // ========== TOGGLE SWITCH ==========
@@ -957,6 +1039,29 @@ function updateEmpTypeChips() {
 document.querySelectorAll('input[name="emp_types[]"]').forEach(cb =>
     cb.addEventListener('change', updateEmpTypeChips)
 );
+
+function updateIdCardTemplateCards() {
+    document.querySelectorAll('input[name="id_card_template"]').forEach((radio) => {
+        const card = radio.closest('.id-card-template-card');
+        const icon = card?.querySelector('.id-card-template-icon');
+        if (!card) return;
+
+        card.classList.toggle('border-primary', radio.checked);
+        card.classList.toggle('bg-primary/5', radio.checked);
+        icon?.classList.toggle('bg-primary', radio.checked);
+        icon?.classList.toggle('text-primary-foreground', radio.checked);
+        icon?.classList.toggle('bg-muted', !radio.checked);
+        icon?.classList.toggle('text-muted-foreground', !radio.checked);
+    });
+}
+
+document.querySelectorAll('input[name="id_card_template"]').forEach((radio) => {
+    radio.addEventListener('change', updateIdCardTemplateCards);
+    radio.closest('.id-card-template-card')?.addEventListener('click', () => {
+        radio.checked = true;
+        radio.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+});
 
 function selectSector(sector) {
     document.getElementById('inp-sector').value = sector;

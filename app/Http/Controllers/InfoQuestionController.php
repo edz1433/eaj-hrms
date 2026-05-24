@@ -30,16 +30,16 @@ class InfoQuestionController extends Controller
     }
 
     public function columnStat($empid){
-        $familyBg = FamilyBg::where('empid', $empid)->first();
-        $educBg = EducBg::where('empid', $empid)->first();
+        $familyBg = FamilyBg::firstOrCreate(['empid' => $empid]);
+        $educBg = EducBg::firstOrCreate(['empid' => $empid]);
         $eligibility = Eligibility::where('empid', $empid)->get();
         $workexperience = WorkExperience::where('empid', $empid)->get();
         $voluntaryworks = VoluntaryWork::where('empid', $empid)->get();
         $learningdev = LearningDev::where('empid', $empid)->get();
-        $otherinfo = OtherInfo::where('empid', $empid)->first();
-        $infoquestion = InfoQuestion::where('empid', $empid)->first();
-        $references = PdsReference::where('empid', $empid)->first();
-        $govids= GovId::where('empid', $empid)->first();
+        $otherinfo = OtherInfo::firstOrCreate(['empid' => $empid]);
+        $infoquestion = InfoQuestion::firstOrCreate(['empid' => $empid]);
+        $references = PdsReference::firstOrCreate(['empid' => $empid]);
+        $govids= GovId::firstOrCreate(['empid' => $empid]);
         
         $columnstatus = [
             'colfamstat' => $familyBg->famhasAnyValue(),
@@ -59,9 +59,9 @@ class InfoQuestionController extends Controller
 
     public function infoQuestion ($id = null){
         $guard = $this->getGuard();
-        $empid = ($id) ? $id : auth()->guard($guard)->user()->id;
-        $employee = Employee::find($empid);
-        $infoquestion = InfoQuestion::where('empid', $employee->emp_ID)->first();
+        $empid = pdsRouteEmployeeId($id, $guard);
+        $employee = Employee::findOrFail($empid);
+        $infoquestion = InfoQuestion::firstOrCreate(['empid' => $employee->emp_ID]);
         $columnstatus = $this->columnStat($employee->emp_ID);
 
         return view("emp.info-question", compact('guard', 'empid', 'employee', 'infoquestion', 'columnstatus'));
@@ -71,23 +71,30 @@ class InfoQuestionController extends Controller
     {
         $empid = $request->input('empid'); 
         $columnWithSuffix = $request->input('column');
-        $index = $request->input('index');    
+        $index = (int) $request->input('index');
         $value = $request->input('value');
     
-        $column = preg_replace('/_\d+$/', '', $columnWithSuffix);
+        if (str_starts_with($columnWithSuffix, 'question')) {
+            $column = 'question';
+        } elseif (str_starts_with($columnWithSuffix, 'qdetails')) {
+            $column = 'qdetails';
+        } else {
+            return response()->json(['success' => false, 'message' => 'Invalid field.'], 422);
+        }
     
         $employee = Employee::find($empid);
-        $infoQuestion = InfoQuestion::where('empid', $employee->emp_ID)->first();
+        if (!$employee) {
+            return response()->json(['success' => false, 'message' => 'Employee not found.'], 404);
+        }
+
+        $infoQuestion = InfoQuestion::firstOrCreate(['empid' => $employee->emp_ID]);
     
         if ($infoQuestion) {
             $currentValue = $infoQuestion->$column;
             $valuesArray = explode(',', $currentValue);
+            $valuesArray = array_pad($valuesArray, max($index + 1, 13), '');
     
-            if (isset($valuesArray[$index])) {
-                $valuesArray[$index] = $value;
-            } else {
-                $valuesArray[$index] = $value;
-            }
+            $valuesArray[$index] = $value;
     
             $newValue = implode(',', $valuesArray);
     
@@ -98,13 +105,11 @@ class InfoQuestionController extends Controller
                 // Ensure 'qdetails' exists and split it into an array
                 $qdetailsArray = explode(',', $infoQuestion->qdetails);
     
-                // Update the element in 'qdetails' at the same index
-                if (isset($qdetailsArray[$index])) {
-                    $qdetailsArray[$index] = '';
-                } else {
-                    // If the index is out of bounds, add empty values up to that index
-                    $qdetailsArray = array_pad($qdetailsArray, $index + 1, '');
-                    $qdetailsArray[$index] = '';
+                $qdetailsArray = array_pad($qdetailsArray, max($index + 1, 13), '');
+                $qdetailsArray[$index] = '';
+
+                if ($index === 3) {
+                    $qdetailsArray[12] = '';
                 }
     
                 $infoQuestion->qdetails = implode(',', $qdetailsArray);
@@ -119,3 +124,5 @@ class InfoQuestionController extends Controller
     }    
     
 }
+
+

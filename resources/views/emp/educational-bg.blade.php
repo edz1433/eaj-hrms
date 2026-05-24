@@ -25,7 +25,7 @@
 
         <div class="flex items-center gap-3">
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
-                <i class="fas fa-graduation-cap text-emerald-600 dark:text-emerald-400 text-sm"></i>
+                <i data-lucide="graduation-cap" class="h-4 w-4 text-emerald-600 dark:text-emerald-400"></i>
             </div>
             <div>
                 <h1 class="text-base font-bold text-foreground">Educational Background</h1>
@@ -35,13 +35,13 @@
 
         @php
         $eduLevels = [
-            ['Elementary', 'fa-school', 'blue',
+            ['Elementary', 'school', 'blue',
                 [['elem_school','School Name (write in full)','text'],['elem_period','Period of Attendance','text'],['elem_level','Highest Level / Units Earned','text'],['elem_grad','Year Graduated','number'],['elem_honor','Scholarship / Academic Honors','text']]
             ],
-            ['Secondary', 'fa-chalkboard-teacher', 'violet',
+            ['Secondary', 'presentation', 'violet',
                 [['sec_school','School Name (write in full)','text'],['sec_period','Period of Attendance','text'],['sec_level','Highest Level / Units Earned','text'],['sec_grad','Year Graduated','number'],['sec_honor','Scholarship / Academic Honors','text']]
             ],
-            ['Vocational / Trade Course', 'fa-tools', 'amber',
+            ['Vocational / Trade Course', 'wrench', 'amber',
                 [['voc_school','School Name (write in full)','text'],['voc_course','Basic Education / Degree / Course','text'],['voc_period','Period of Attendance','text'],['voc_level','Highest Level / Units Earned','text'],['voc_grad','Year Graduated','number'],['voc_honor','Scholarship / Academic Honors','text']]
             ],
         ];
@@ -51,7 +51,7 @@
         @foreach($eduLevels as [$title, $icon, $color, $fields])
         <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
-                <i class="fas {{ $icon }} {{ $colorMap[$color] }} text-xs opacity-80"></i>
+                <i data-lucide="{{ $icon }}" class="h-3.5 w-3.5 {{ $colorMap[$color] }} opacity-80"></i>
                 <span class="text-xs font-bold uppercase tracking-wide text-foreground">{{ $title }}</span>
             </div>
             <div class="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -77,12 +77,12 @@
         <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             <div class="flex items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3">
                 <div class="flex items-center gap-2">
-                    <i class="fas fa-university text-indigo-500 text-xs opacity-80"></i>
+                    <i data-lucide="university" class="h-3.5 w-3.5 text-indigo-500 opacity-80"></i>
                     <span class="text-xs font-bold uppercase tracking-wide text-foreground">College</span>
                 </div>
                 <button id="add-row-college" type="button"
                     class="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 transition-colors">
-                    <i class="fas fa-plus text-[9px]"></i> Add Entry
+                    <i data-lucide="plus" class="h-3 w-3"></i> Add Entry
                 </button>
             </div>
             <div id="college-container" class="divide-y divide-border/40">
@@ -91,7 +91,7 @@
                     @if($index > 0)
                         <button type="button"
                             class="btn-delete absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 dark:border-red-800/40 dark:bg-red-950/30 transition-colors">
-                            <i class="fas fa-times text-[10px]"></i>
+                            <i data-lucide="x" class="h-3 w-3"></i>
                         </button>
                     @endif
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -135,12 +135,12 @@
         <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             <div class="flex items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3">
                 <div class="flex items-center gap-2">
-                    <i class="fas fa-book-open text-rose-500 text-xs opacity-80"></i>
+                    <i data-lucide="book-open" class="h-3.5 w-3.5 text-rose-500 opacity-80"></i>
                     <span class="text-xs font-bold uppercase tracking-wide text-foreground">Graduate Studies</span>
                 </div>
                 <button id="add-row-graduate" type="button"
                     class="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 transition-colors">
-                    <i class="fas fa-plus text-[9px]"></i> Add Entry
+                    <i data-lucide="plus" class="h-3 w-3"></i> Add Entry
                 </button>
             </div>
             <div id="graduate-container" class="divide-y divide-border/40">
@@ -149,7 +149,7 @@
                     @if($index > 0)
                         <button type="button"
                             class="btn-delete-grad absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 dark:border-red-800/40 dark:bg-red-950/30 transition-colors">
-                            <i class="fas fa-times text-[10px]"></i>
+                            <i data-lucide="x" class="h-3 w-3"></i>
                         </button>
                     @endif
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -201,6 +201,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const collegeUrl = @json(route('educBgUpdateArray'));
     const graduateUrl = @json(route('educBgUpdateGraduateArray'));
     const inputClass = @json($inputCls);
+
+    function refreshRowIcons(row) {
+        requestAnimationFrame(() => {
+            window.refreshUi?.(row);
+            window.refreshIcons?.();
+        });
+    }
 
     function markField(field, state) {
         field.classList.remove('border-emerald-400', 'border-red-400');
@@ -341,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         document.getElementById('college-container')?.appendChild(row);
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+        refreshRowIcons(row);
         row.querySelector('input')?.focus();
         saveCollege();
     });
@@ -364,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         document.getElementById('graduate-container')?.appendChild(row);
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+        refreshRowIcons(row);
         row.querySelector('input')?.focus();
         saveGraduate();
     });

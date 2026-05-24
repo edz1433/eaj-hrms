@@ -20,7 +20,8 @@
             var button = document.getElementById('capture-toggle1');
             button.classList.remove('btn-secondary');
             button.classList.add('btn-success');
-            button.innerHTML = '<i class="fas fa-check"></i> Uploaded';
+            button.innerHTML = '<i data-lucide="check" class="h-3.5 w-3.5"></i> Uploaded';
+            window.refreshUi?.(button);
             button.disabled = true; // Disable the button to prevent re-uploading the same image
         } else {
             // Reset the file input if an invalid file is selected

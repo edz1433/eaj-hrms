@@ -31,10 +31,38 @@ class UserController extends Controller
         return array_values(array_filter($this->roles, fn ($role) => $role !== 'Administrator'));
     }
 
+    private function canManageAdministrators(): bool
+    {
+        return auth()->guard('web')->user()?->role === 'Administrator';
+    }
+
+    private function assignableRoles(): array
+    {
+        return $this->canManageAdministrators()
+            ? $this->roles
+            : $this->employeeRoles();
+    }
+
+    private function forbiddenAdministratorResponse(Request $request)
+    {
+        $message = 'Only Administrator accounts can manage Administrator users.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+            ], 403);
+        }
+
+        return redirect()->back()->with('error', $message);
+    }
+
     private function menuKeys(Request $request): array
     {
         return collect($request->input('menu_keys', []))
+            ->merge(MenuHelper::roleDefaults($request->input('role')))
             ->intersect(MenuHelper::keys())
+            ->unique()
             ->values()
             ->all();
     }
@@ -45,7 +73,12 @@ class UserController extends Controller
         $employee = $user->employee;
         $menuKeys = $user->role === 'Administrator'
             ? MenuHelper::keys()
-            : ($user->menuPermission?->menu_keys ?? []);
+            : collect($user->menuPermission?->menu_keys ?? [])
+                ->merge(MenuHelper::roleDefaults($user->role))
+                ->intersect(MenuHelper::keys())
+                ->unique()
+                ->values()
+                ->all();
 
         return [
             'id' => $user->id,
@@ -89,12 +122,14 @@ class UserController extends Controller
     public function ulist()
     {
         $guard = $this->getGuard();
+        $canManageAdministrators = $this->canManageAdministrators();
         $users = User::with(['employee', 'menuPermission'])
+            ->when(! $canManageAdministrators, fn ($query) => $query->where('role', '!=', 'Administrator'))
             ->orderByRaw("role = 'Administrator' desc")
             ->orderBy('lname')
             ->get();
         $employees = $this->employeesForSelection();
-        $roles = $this->roles;
+        $roles = $this->assignableRoles();
         $employeeRoles = $this->employeeRoles();
         $menuGroups = MenuHelper::grouped();
         $menuKeys = MenuHelper::keys();
@@ -114,14 +149,19 @@ class UserController extends Controller
             'employeeRoles',
             'menuGroups',
             'menuKeys',
-            'stats'
+            'stats',
+            'canManageAdministrators'
         ));
     }
 
     public function uCreate(Request $request)
     {
+        if ($request->input('role') === 'Administrator' && ! $this->canManageAdministrators()) {
+            return $this->forbiddenAdministratorResponse($request);
+        }
+
         $validated = $request->validate([
-            'role' => ['required', Rule::in($this->roles)],
+            'role' => ['required', Rule::in($this->assignableRoles())],
             'emp_ID' => [
                 Rule::requiredIf(fn () => in_array($request->role, $this->employeeRoles(), true)),
                 'nullable',
@@ -196,6 +236,17 @@ class UserController extends Controller
     {
         $user = User::with(['employee', 'menuPermission'])->findOrFail($id);
 
+        if ($user->role === 'Administrator' && ! $this->canManageAdministrators()) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found.',
+                ], 404);
+            }
+
+            abort(404);
+        }
+
         return response()->json([
             'success' => true,
             'user' => $this->userPayload($user),
@@ -206,9 +257,16 @@ class UserController extends Controller
     {
         $user = User::findOrFail($request->input('uid'));
 
+        if (
+            ! $this->canManageAdministrators()
+            && ($user->role === 'Administrator' || $request->input('role') === 'Administrator')
+        ) {
+            return $this->forbiddenAdministratorResponse($request);
+        }
+
         $validated = $request->validate([
             'uid' => ['required', 'integer', 'exists:users,id'],
-            'role' => ['required', Rule::in($this->roles)],
+            'role' => ['required', Rule::in($this->assignableRoles())],
             'emp_ID' => [
                 Rule::requiredIf(fn () => in_array($request->role, $this->employeeRoles(), true)),
                 'nullable',
@@ -304,6 +362,14 @@ class UserController extends Controller
 
         if ($user->id === auth()->guard('web')->id()) {
             return response()->json(['success' => false, 'status' => 403, 'message' => 'Cannot delete your own account.'], 403);
+        }
+
+        if ($user->role === 'Administrator' && ! $this->canManageAdministrators()) {
+            return response()->json([
+                'success' => false,
+                'status' => 403,
+                'message' => 'Only Administrator accounts can delete Administrator users.',
+            ], 403);
         }
 
         DB::transaction(function () use ($user) {

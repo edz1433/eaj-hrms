@@ -31,16 +31,16 @@ class EligibilityController extends Controller
     }
 
     public function columnStat($empid){
-        $familyBg = FamilyBg::where('empid', $empid)->first();
-        $educBg = EducBg::where('empid', $empid)->first();
+        $familyBg = FamilyBg::firstOrCreate(['empid' => $empid]);
+        $educBg = EducBg::firstOrCreate(['empid' => $empid]);
         $eligibility = Eligibility::where('empid', $empid)->get();
         $workexperience = WorkExperience::where('empid', $empid)->get();
         $voluntaryworks = VoluntaryWork::where('empid', $empid)->get();
         $learningdev = LearningDev::where('empid', $empid)->get();
-        $otherinfo = OtherInfo::where('empid', $empid)->first();
-        $infoquestion = InfoQuestion::where('empid', $empid)->first();
-        $references = PdsReference::where('empid', $empid)->first();
-        $govids= GovId::where('empid', $empid)->first();
+        $otherinfo = OtherInfo::firstOrCreate(['empid' => $empid]);
+        $infoquestion = InfoQuestion::firstOrCreate(['empid' => $empid]);
+        $references = PdsReference::firstOrCreate(['empid' => $empid]);
+        $govids= GovId::firstOrCreate(['empid' => $empid]);
         
         $columnstatus = [
             'colfamstat' => $familyBg->famhasAnyValue(),
@@ -60,35 +60,37 @@ class EligibilityController extends Controller
 
     public function eligibility($id = null){
         $guard = $this->getGuard();
-        $empid = ($id) ? $id : auth()->guard($guard)->user()->id;
-        $employee = Employee::find($empid);
+        $empid = pdsRouteEmployeeId($id, $guard);
+        $employee = Employee::findOrFail($empid);
         $eligibility = Eligibility::where('empid', $employee->emp_ID)->get();
         $columnstatus = $this->columnStat($employee->emp_ID);
+        $employeeRouteId = shortEncrypt((string) $employee->id);
         
-        return view("emp.eligibility", compact('guard', 'empid', 'employee', 'eligibility', 'columnstatus'));
+        return view("emp.eligibility", compact('guard', 'empid', 'employee', 'eligibility', 'columnstatus', 'employeeRouteId'));
     }
     
     public function eligibilityEdit($id = null, $eid){
         $guard = $this->getGuard();
-        $empid = ($id) ? $id : auth()->guard($guard)->user()->id;
-        $employee = Employee::find($empid);
+        $empid = pdsRouteEmployeeId($id, $guard);
+        $employee = Employee::findOrFail($empid);
         $eligibility = Eligibility::where('empid', $employee->emp_ID)->get();
-        $eligibilityedit = Eligibility::where('id', $eid)->where('empid', $employee->emp_ID)->first();
+        $eligibilityedit = Eligibility::where('id', $eid)->where('empid', $employee->emp_ID)->firstOrFail();
         $columnstatus = $this->columnStat($employee->emp_ID);
+        $employeeRouteId = shortEncrypt((string) $employee->id);
         
-        return view("emp.eligibility", compact('guard', 'empid', 'employee', 'eligibility', 'eligibilityedit', 'columnstatus'));
+        return view("emp.eligibility", compact('guard', 'empid', 'employee', 'eligibility', 'eligibilityedit', 'columnstatus', 'employeeRouteId'));
     }
 
     public function eligibilityCreate(Request $request)
     {
         $request->validate([
-            'careereligible' => 'nullable',
+            'careereligible' => 'required|string|max:255',
             'rating' => 'nullable',
             'date_exam' => 'required',
-            'place_exam' => 'required',
+            'place_exam' => 'required|string|max:255',
             'number' => 'nullable',
             'date_valid' => 'nullable',
-            'attachment' => 'required|file|mimes:pdf',
+            'attachment' => 'required|file|mimes:pdf|max:5120',
         ]);
         
         $attachmentPath = null;
@@ -126,13 +128,13 @@ class EligibilityController extends Controller
     public function eligibilityUpdate(Request $request, $id)
     {
         $request->validate([
-            'careereligible' => 'required',
+            'careereligible' => 'required|string|max:255',
             'rating' => 'nullable',
             'date_exam' => 'required',
-            'place_exam' => 'required',
+            'place_exam' => 'required|string|max:255',
             'number' => 'nullable',
             'date_valid' => 'nullable',
-            'attachment' => 'nullable|file|mimes:pdf',
+            'attachment' => 'nullable|file|mimes:pdf|max:5120',
         ]);
 
         $eligibility = Eligibility::findOrFail($id);
@@ -176,6 +178,13 @@ class EligibilityController extends Controller
             'status' => 2,
             'remarks' => $validated['remarks']
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => 200,
+                'message' => 'Successfully canceled.',
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Successfully canceled.');
     }

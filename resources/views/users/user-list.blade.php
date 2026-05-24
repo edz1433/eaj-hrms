@@ -31,7 +31,7 @@
         </button>
     </div>
 
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <div class="grid grid-cols-2 gap-3 {{ $canManageAdministrators ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }}">
         <div class="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
             <div class="flex items-start justify-between">
                 <div>
@@ -43,10 +43,12 @@
                 </div>
             </div>
         </div>
+        @if($canManageAdministrators)
         <div class="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Administrators</p>
             <p class="mt-1 text-3xl font-bold text-foreground tabular-nums">{{ number_format($stats['admins']) }}</p>
         </div>
+        @endif
         <div class="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">HR Users</p>
             <p class="mt-1 text-3xl font-bold text-foreground tabular-nums">{{ number_format($stats['hr']) }}</p>
@@ -54,10 +56,6 @@
         <div class="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Payroll Users</p>
             <p class="mt-1 text-3xl font-bold text-foreground tabular-nums">{{ number_format($stats['payroll']) }}</p>
-        </div>
-        <div class="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employee-linked</p>
-            <p class="mt-1 text-3xl font-bold text-foreground tabular-nums">{{ number_format($stats['linked']) }}</p>
         </div>
     </div>
 
@@ -69,7 +67,7 @@
                     class="w-full rounded-xl border border-border/60 bg-background py-2 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20">
             </div>
             <div class="text-xs text-muted-foreground">
-                Administrator has full access. Other roles follow checked permissions.
+                {{ $canManageAdministrators ? 'Administrator has full access. Other roles follow checked permissions.' : 'Administrator accounts are hidden. Other roles follow checked permissions.' }}
             </div>
         </div>
 
@@ -161,8 +159,8 @@
 
 <div id="user-drawer" class="fixed inset-0 z-50 hidden items-stretch justify-end overflow-hidden p-0" aria-modal="true" role="dialog">
     <div class="absolute inset-0 bg-black/30" onclick="closeUserDrawer()"></div>
-    <div class="right-corner-modal relative w-full max-w-2xl rounded-2xl border border-border/60 bg-card shadow-2xl">
-        <div class="flex items-start justify-between border-b border-border/60 px-5 py-4">
+    <div class="right-corner-modal relative flex h-full max-h-screen w-full max-w-2xl flex-col overflow-hidden rounded-none border-l border-border/60 bg-card shadow-2xl sm:rounded-l-2xl">
+        <div class="shrink-0 flex items-start justify-between border-b border-border/60 px-5 py-4">
             <div>
                 <h3 class="inline-flex items-center gap-2 font-semibold text-foreground">
                     <i data-lucide="user-cog" class="h-4 w-4 text-primary"></i>
@@ -175,10 +173,10 @@
             </button>
         </div>
 
-        <form id="user-form" method="POST" action="{{ route('uCreate') }}">
+        <form id="user-form" method="POST" action="{{ route('uCreate') }}" class="flex min-h-0 flex-1 flex-col">
             @csrf
             <input type="hidden" name="uid" id="user-id">
-            <div class="space-y-5 p-5">
+            <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
                 <div>
                     <label class="mb-1.5 block text-xs font-medium text-foreground">Role <span class="text-red-500">*</span></label>
                     <select name="role" id="user-role" required onchange="handleRoleChange()"
@@ -240,7 +238,9 @@
                     <label class="mb-1.5 block text-xs font-medium text-foreground">Password <span id="password-required" class="text-red-500">*</span></label>
                     <input type="password" name="password" id="user-password" autocomplete="new-password"
                         class="w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
-                    <p class="mt-1 text-xs text-muted-foreground" id="password-help">Required for Administrator. Employee-linked users default to their Employee ID when blank.</p>
+                    <p class="mt-1 text-xs text-muted-foreground" id="password-help">
+                        {{ $canManageAdministrators ? 'Required for Administrator. Employee-linked users default to their Employee ID when blank.' : 'Employee-linked users default to their Employee ID when blank.' }}
+                    </p>
                 </div>
 
                 <div id="permission-block" class="rounded-2xl border border-border/60 bg-muted/10">
@@ -272,7 +272,7 @@
                     </div>
                 </div>
             </div>
-            <div class="flex justify-end gap-2 border-t border-border/60 px-5 py-4">
+            <div class="shrink-0 flex justify-end gap-2 border-t border-border/60 bg-card px-5 py-4">
                 <button type="button" onclick="closeUserDrawer()" class="rounded-lg border border-border/60 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted">Cancel</button>
                 <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90">
                     <i data-lucide="save" class="h-3.5 w-3.5"></i> Save User
@@ -307,6 +307,7 @@ const userConfig = {
     deleteUrl: @json(route('uDelete')),
     csrf: document.querySelector('meta[name="csrf-token"]')?.content || '',
     rolesEmployee: @json($employeeRoles),
+    canManageAdministrators: @json($canManageAdministrators),
     menuGroups: @json($menuGroups),
 };
 const employeesById = @json($employees->keyBy('emp_ID'));

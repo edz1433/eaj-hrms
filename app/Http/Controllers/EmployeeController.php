@@ -86,23 +86,11 @@ class EmployeeController extends Controller
 
     private function generateEmployeeId(): string
     {
-        $existingIds = Employee::where('emp_ID', 'not like', '%-%')
-            ->lockForUpdate()
-            ->pluck('emp_ID');
-
-        $lastNumber = $existingIds
-            ->map(function ($employeeId) {
-                if (preg_match('/^(?:EMP)?(\d+)$/', $employeeId, $matches)) {
-                    return (int) $matches[1];
-                }
-
-                return null;
-            })
-            ->filter()
-            ->max() ?? 0;
+        $prefix = Setting::singleton()->employeeIdPrefix();
+        $lastNumber = $this->nextEmployeeNumber($prefix, true);
 
         do {
-            $employeeId = str_pad((string) ++$lastNumber, 4, '0', STR_PAD_LEFT);
+            $employeeId = $prefix . str_pad((string) ++$lastNumber, 4, '0', STR_PAD_LEFT);
         } while (Employee::where('emp_ID', $employeeId)->exists());
 
         return $employeeId;
@@ -110,19 +98,42 @@ class EmployeeController extends Controller
 
     private function previewEmployeeId(): string
     {
-        $lastNumber = Employee::where('emp_ID', 'not like', '%-%')
-            ->pluck('emp_ID')
+        $prefix = Setting::singleton()->employeeIdPrefix();
+        $lastNumber = $this->nextEmployeeNumber($prefix);
+
+        return $prefix . str_pad((string) ($lastNumber + 1), 4, '0', STR_PAD_LEFT);
+    }
+
+    private function nextEmployeeNumber(string $prefix, bool $lock = false): int
+    {
+        $query = Employee::whereNotNull('emp_ID');
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        $prefixPattern = preg_quote($prefix, '/');
+        $employeeIds = $query->pluck('emp_ID');
+
+        return $employeeIds
             ->map(function ($employeeId) {
-                if (preg_match('/^(?:EMP)?(\d+)$/', $employeeId, $matches)) {
+                if (preg_match('/^(\d+)$/', $employeeId, $matches)) {
                     return (int) $matches[1];
                 }
 
                 return null;
             })
-            ->filter()
-            ->max() ?? 0;
+            ->merge(
+                $employeeIds->map(function ($employeeId) use ($prefixPattern) {
+                    if (preg_match('/^' . $prefixPattern . '(\d+)$/i', $employeeId, $matches)) {
+                        return (int) $matches[1];
+                    }
 
-        return str_pad((string) ($lastNumber + 1), 4, '0', STR_PAD_LEFT);
+                    return null;
+                })
+            )
+            ->filter(fn($number) => $number !== null)
+            ->max() ?? 0;
     }
 
     private function employeePayload(Employee $employee): array
@@ -519,9 +530,13 @@ class EmployeeController extends Controller
                 $modelClass = "App\\Models\\{$model}";
 
                 if (class_exists($modelClass)) {
-                    $modelClass::create([
-                        'empid' => $newEmpID,
-                    ]);
+                    if ($modelClass === OfficialTime::class) {
+                        $modelClass::create(OfficialTime::defaultAttributes($newEmpID));
+                    } else {
+                        $modelClass::create([
+                            'empid' => $newEmpID,
+                        ]);
+                    }
                 } else {
                     throw new \Exception("Model {$modelClass} not found.");
                 }
@@ -592,7 +607,41 @@ class EmployeeController extends Controller
     public function employeeUpdate(Request $request)
     {
         $employee = Employee::findOrFail($request->id);
+
+        if (auth()->guard('employee')->check() && (int) $employee->id !== (int) auth()->guard('employee')->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only update your own Personal Data Sheet.',
+            ], 403);
+        }
+
         $column = $request->column;
+        $specialLeaveColumns = [
+            'special_pl',
+            'solo_pl',
+            'study_leave',
+            'vawc_leave',
+            'rehab_leave',
+            'benefits_leave',
+            'calamity_leave',
+            'adopt_leave',
+            'servcred_leave',
+            'well_leave',
+        ];
+
+        if (in_array($column, $specialLeaveColumns, true)) {
+            $request->validate([
+                'value' => ['required', 'numeric', 'min:0', 'max:999.999'],
+            ]);
+
+            $value = round((float) $request->value, 3);
+            $employee->update([$column => $value]);
+
+            return response()->json([
+                'success' => true,
+                'value' => number_format($value, 3, '.', ''),
+            ]);
+        }
 
         if ($column === 'emp_status') {
             $request->validate([
@@ -679,20 +728,32 @@ class EmployeeController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function PDS($id){
-        $empid = $this->resolveEmployeeRouteId($id);
+    public function PDS($id = null){
+        $employeeGuard = auth()->guard('employee');
+
+        if ($employeeGuard->check()) {
+            if ($id === null) {
+                $empid = $employeeGuard->id();
+            } else {
+                $empid = $this->resolveEmployeeRouteId($id);
+
+                if ((int) $empid !== (int) $employeeGuard->id()) {
+                    return redirect()->route('PDS')
+                        ->with('error1', 'You can only access your own Personal Data Sheet.');
+                }
+
+                return redirect()->route('PDS');
+            }
+        } else {
+            $empid = $this->resolveEmployeeRouteId($id);
+
+            if ((string) $id === (string) $empid) {
+                return redirect()->route('PDS', shortEncrypt((string) $empid));
+            }
+        }
 
         if (!$empid) {
             abort(404);
-        }
-
-        if ((string) $id === (string) $empid) {
-            return redirect()->route('PDS', shortEncrypt((string) $empid));
-        }
-
-        if (auth()->guard('employee')->check() && (int) $empid !== (int) auth()->guard('employee')->id()) {
-            return redirect()->route('PDS', shortEncrypt((string) auth()->guard('employee')->id()))
-                ->with('error1', 'You can only access your own Personal Data Sheet.');
         }
 
         $setting = Setting::singleton();
@@ -741,6 +802,15 @@ class EmployeeController extends Controller
         $customPaper = array(0, 0, 970, 612);
         $employees = Employee::leftJoin('offices', 'employees.emp_dept', '=', 'offices.id')
             ->leftJoin('statuses', 'employees.emp_status', '=', 'statuses.id')
+            ->select(
+                'employees.lname',
+                'employees.fname',
+                'employees.position',
+                'employees.org_email',
+                'offices.office_name',
+                'statuses.status_name'
+            )
+            ->orderBy('employees.lname')
             ->get();
         
         $pdf = \PDF::loadView('emp.gen-emp', compact('employees'))->setPaper($customPaper, 'portrait');
@@ -837,117 +907,155 @@ class EmployeeController extends Controller
 
     public function OfficialTimeRead(Request $request, $empid)
     {
-        $offtimes = OfficialTime::where('empid', '=', $empid)->first();
-        $monmorn = explode('-', $offtimes->morn_mon);
-        $monnoon = explode('-', $offtimes->aft_mon);
+        abort_unless(Employee::where('emp_ID', $empid)->exists(), 404, 'Employee not found.');
 
-        $tuemorn = explode('-', $offtimes->morn_tue);
-        $tuenoon = explode('-', $offtimes->aft_tue);
-
-        $wedmorn = explode('-', $offtimes->morn_wed);
-        $wednoon = explode('-', $offtimes->aft_wed);
-
-        $thumorn = explode('-', $offtimes->morn_thu);
-        $thunoon = explode('-', $offtimes->aft_thu);
-
-        $frimorn = explode('-', $offtimes->morn_fri);
-        $frinoon = explode('-', $offtimes->aft_fri);
-
-        $data = [
-            'mon_mornin' => $monmorn[0],
-            'mon_mornout' => $monmorn[1],
-            'mon_noonin' => $monnoon[0],
-            'mon_noonout' => $monnoon[1],
-
-            'tue_mornin' => $tuemorn[0],
-            'tue_mornout' => $tuemorn[1],
-            'tue_noonin' => $tuenoon[0],
-            'tue_noonout' => $tuenoon[1],
-
-            'wed_mornin' => $wedmorn[0],
-            'wed_mornout' => $wedmorn[1],
-            'wed_noonin' => $wednoon[0],
-            'wed_noonout' => $wednoon[1],
-
-            'thu_mornin' => $thumorn[0],
-            'thu_mornout' => $thumorn[1],
-            'thu_noonin' => $thunoon[0],
-            'thu_noonout' => $thunoon[1],
-
-            'fri_mornin' => $frimorn[0],
-            'fri_mornout' => $frimorn[1],
-            'fri_noonin' => $frinoon[0],
-            'fri_noonout' => $frinoon[1],
-        ];
+        $officialTime = OfficialTime::forEmployee((string) $empid);
     
         return response()->json([
             'success' => true,
-            'data' => $data,
+            'empid' => $empid,
+            'data' => $this->formatOfficialTime($officialTime),
         ]);
 
     }    
 
     public function OfficialTimeCreate(Request $request)
     {
-        $validatedData = $request->validate([
-            'empid' => 'required',
-            'mon_mornin' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'mon_mornout' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'mon_noonin' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'mon_noonout' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-    
-            'tue_mornin' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'tue_mornout' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'tue_noonin' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'tue_noonout' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-    
-            'wed_mornin' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'wed_mornout' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'wed_noonin' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'wed_noonout' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-    
-            'thu_mornin' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'thu_mornout' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'thu_noonin' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'thu_noonout' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-    
-            'fri_mornin' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'fri_mornout' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'fri_noonin' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-            'fri_noonout' => 'required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ',
-        ]);
-        
-        $officialTime = OfficialTime::firstOrNew(['empid' => $request->empid]);
+        $rules = [
+            'empid' => ['required', 'string', 'exists:employees,emp_ID'],
+        ];
 
-        $convertTo24HourFormat = function ($time) {
-            return (new \DateTime($time))->format('H:i:s');
-        };
-    
-        $officialTime->morn_mon = $convertTo24HourFormat($request->mon_mornin) . '-' . $convertTo24HourFormat($request->mon_mornout);
-        $officialTime->aft_mon = $convertTo24HourFormat($request->mon_noonin) . '-' . $convertTo24HourFormat($request->mon_noonout);
-    
-        $officialTime->morn_tue = $convertTo24HourFormat($request->tue_mornin) . '-' . $convertTo24HourFormat($request->tue_mornout);
-        $officialTime->aft_tue = $convertTo24HourFormat($request->tue_noonin) . '-' . $convertTo24HourFormat($request->tue_noonout);
-    
-        $officialTime->morn_wed = $convertTo24HourFormat($request->wed_mornin) . '-' . $convertTo24HourFormat($request->wed_mornout);
-        $officialTime->aft_wed = $convertTo24HourFormat($request->wed_noonin) . '-' . $convertTo24HourFormat($request->wed_noonout);
-    
-        $officialTime->morn_thu = $convertTo24HourFormat($request->thu_mornin) . '-' . $convertTo24HourFormat($request->thu_mornout);
-        $officialTime->aft_thu = $convertTo24HourFormat($request->thu_noonin) . '-' . $convertTo24HourFormat($request->thu_noonout);
-    
-        $officialTime->morn_fri = $convertTo24HourFormat($request->fri_mornin) . '-' . $convertTo24HourFormat($request->fri_mornout);
-        $officialTime->aft_fri = $convertTo24HourFormat($request->fri_noonin) . '-' . $convertTo24HourFormat($request->fri_noonout);
-    
-        $officialTime->save();
-    
+        foreach (OfficialTime::DAYS as $day) {
+            foreach (['mornin', 'mornout', 'noonin', 'noonout'] as $slot) {
+                $rules["{$day}_{$slot}"] = ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/'];
+            }
+        }
+
+        $validator = Validator::make($request->all(), $rules, [
+            '*.regex' => 'Please enter a valid time.',
+        ]);
+
+        $validator->after(function ($validator) use ($request) {
+            foreach (OfficialTime::DAYS as $day) {
+                try {
+                    $morningIn = OfficialTime::normalizeTime((string) $request->input("{$day}_mornin"));
+                    $morningOut = OfficialTime::normalizeTime((string) $request->input("{$day}_mornout"));
+                    $afternoonIn = OfficialTime::normalizeTime((string) $request->input("{$day}_noonin"));
+                    $afternoonOut = OfficialTime::normalizeTime((string) $request->input("{$day}_noonout"));
+                } catch (\Throwable) {
+                    continue;
+                }
+
+                if ($morningIn >= $morningOut) {
+                    $validator->errors()->add("{$day}_mornout", strtoupper($day) . ' AM Out must be after AM In.');
+                }
+
+                if ($afternoonIn >= $afternoonOut) {
+                    $validator->errors()->add("{$day}_noonout", strtoupper($day) . ' PM Out must be after PM In.');
+                }
+
+                if ($morningOut > $afternoonIn) {
+                    $validator->errors()->add("{$day}_noonin", strtoupper($day) . ' PM In must not be earlier than AM Out.');
+                }
+            }
+        });
+
+        $validatedData = $validator->validate();
+        $payload = [];
+
+        foreach (OfficialTime::DAYS as $day) {
+            $payload["morn_{$day}"] = OfficialTime::buildRange(
+                $validatedData["{$day}_mornin"],
+                $validatedData["{$day}_mornout"]
+            );
+            $payload["aft_{$day}"] = OfficialTime::buildRange(
+                $validatedData["{$day}_noonin"],
+                $validatedData["{$day}_noonout"]
+            );
+        }
+
+        $officialTime = OfficialTime::updateOrCreate(
+            ['empid' => $validatedData['empid']],
+            $payload
+        );
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Official time saved successfully.',
+                'data' => $this->formatOfficialTime($officialTime),
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Official time saved successfully.');
     }    
+
+    private function formatOfficialTime(OfficialTime $officialTime): array
+    {
+        $data = [];
+
+        foreach (OfficialTime::DAYS as $day) {
+            [$morningIn, $morningOut] = OfficialTime::splitRange(
+                $officialTime->{"morn_{$day}"},
+                OfficialTime::DEFAULT_MORNING
+            );
+            [$afternoonIn, $afternoonOut] = OfficialTime::splitRange(
+                $officialTime->{"aft_{$day}"},
+                OfficialTime::DEFAULT_AFTERNOON
+            );
+
+            $data["{$day}_mornin"] = substr($morningIn, 0, 5);
+            $data["{$day}_mornout"] = substr($morningOut, 0, 5);
+            $data["{$day}_noonin"] = substr($afternoonIn, 0, 5);
+            $data["{$day}_noonout"] = substr($afternoonOut, 0, 5);
+        }
+
+        return $data;
+    }
     
     public function empQr(){
-        $employees = Employee::select('emp_ID', 'fname', 'lname', 'emp_dept')
-            ->orderBy('emp_dept')
-            ->orderBy('lname')
-            ->get();
+        $placeholderFiles = ['default.png', 'default-male.png', 'default-female.png'];
+        $palette = ['#C9407A', '#7C3AED', '#2563EB', '#059669', '#D97706', '#DC2626', '#0891B2', '#0D9488'];
+
+        $employees = Employee::leftJoin('offices', 'employees.emp_dept', '=', 'offices.id')
+            ->leftJoin('statuses', 'employees.emp_status', '=', 'statuses.id')
+            ->select(
+                'employees.emp_ID',
+                'employees.fname',
+                'employees.mname',
+                'employees.lname',
+                'employees.suffix',
+                'employees.position',
+                'employees.profile',
+                'employees.stat_1',
+                'offices.office_name',
+                'statuses.status_name'
+            )
+            ->orderBy('employees.emp_dept')
+            ->orderBy('employees.lname')
+            ->get()
+            ->map(function ($employee) use ($placeholderFiles, $palette) {
+                $i1 = strtoupper(substr((string) $employee->fname, 0, 1));
+                $i2 = strtoupper(substr((string) $employee->lname, 0, 1));
+                $initials = ($i1 . $i2) ?: '?';
+                $profileFile = trim((string) $employee->profile);
+                $hasProfile = $profileFile
+                    && !in_array(strtolower($profileFile), $placeholderFiles, true)
+                    && file_exists(public_path('Profile/Employee/' . $profileFile));
+
+                $employee->display_name = trim(collect([
+                    $employee->fname ? ucwords(strtolower($employee->fname)) : null,
+                    $employee->mname ? ucwords(strtolower(substr($employee->mname, 0, 1))) . '.' : null,
+                    $employee->lname ? ucwords(strtolower($employee->lname)) : null,
+                    $employee->suffix ?: null,
+                ])->filter()->implode(' ')) ?: 'Employee Profile';
+                $employee->initials = $initials;
+                $employee->initial_color = $i1 ? $palette[ord($i1) % count($palette)] : '#C9407A';
+                $employee->profile_url = $hasProfile ? asset('Profile/Employee/' . $profileFile) : null;
+                $employee->qr_token = shortEncrypt($employee->emp_ID);
+
+                return $employee;
+            });
 
         return view('emp.qr-code', compact('employees'));
     }

@@ -393,19 +393,19 @@
                                     @php
                                     switch ($type) {
                                         case '2':
-                                            $route = route('eligibility', $emp->id);
+                                            $route = route('eligibility', shortEncrypt((string) $emp->id));
                                             break;
                                 
                                         case '3':
-                                            $route = route('work-experience', $emp->id);
+                                            $route = route('work-experience', shortEncrypt((string) $emp->id));
                                             break;
                                         
                                         case '4':
-                                            $route = route('voluntary-work', $emp->id);
+                                            $route = route('voluntary-work', shortEncrypt((string) $emp->id));
                                             break;
                                 
                                         case '5':
-                                            $route = route('learning-dev', $emp->id);
+                                            $route = route('learning-dev', shortEncrypt((string) $emp->id));
                                             break;
                                     }
                                     @endphp

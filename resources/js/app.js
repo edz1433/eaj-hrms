@@ -361,7 +361,38 @@ async function initializeApp() {
             if ($ && $.fn) {
 
                 if ($.fn.select2) {
-                    $('.select2').select2();
+                    const searchableSelectSelector = [
+                        '.select2',
+                        '.js-search-select',
+                        '.employee-search-select',
+                        '.employee-office-select',
+                        '.settings-search-select',
+                        'select[name="employee"]',
+                        'select[name="emp_ID"]',
+                        'select[name="emp_dept"]',
+                        'select[name="dept"]',
+                        'select[name="office_head_id"]',
+                        'select[name="oic_id"]',
+                        'select[name="supervisor"]',
+                    ].join(',');
+
+                    $(searchableSelectSelector).each(function () {
+                        const $select = $(this);
+
+                        if ($select.data('select2')) {
+                            return;
+                        }
+
+                        if (!$select.hasClass('select2')) {
+                            $select.addClass('select2');
+                        }
+
+                        $select.select2({
+                            width: '100%',
+                            placeholder: $select.data('placeholder') || $select.attr('placeholder') || 'Search or select',
+                            allowClear: !$select.prop('required'),
+                        });
+                    });
                 }
 
                 if ($.fn.DataTable) {

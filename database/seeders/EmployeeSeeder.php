@@ -16,7 +16,7 @@ class EmployeeSeeder extends Seeder
 
         $employees = [
             [
-                'emp_ID' => '0001',
+                'emp_ID' => 'EMP0001',
                 'fname' => 'MARIA',
                 'mname' => 'SANTOS',
                 'lname' => 'DELA CRUZ',
@@ -32,7 +32,7 @@ class EmployeeSeeder extends Seeder
                 'date_hired' => '2020-01-06',
             ],
             [
-                'emp_ID' => '0002',
+                'emp_ID' => 'EMP0002',
                 'fname' => 'RICARDO',
                 'mname' => 'LOPEZ',
                 'lname' => 'VILLANUEVA',
@@ -48,7 +48,7 @@ class EmployeeSeeder extends Seeder
                 'date_hired' => '2020-02-03',
             ],
             [
-                'emp_ID' => '0003',
+                'emp_ID' => 'EMP0003',
                 'fname' => 'CORAZON',
                 'mname' => 'REYES',
                 'lname' => 'MAGLAYA',
@@ -64,7 +64,7 @@ class EmployeeSeeder extends Seeder
                 'date_hired' => '2020-03-02',
             ],
             [
-                'emp_ID' => '0004',
+                'emp_ID' => 'EMP0004',
                 'fname' => 'JOSE',
                 'mname' => 'BERNARDO',
                 'lname' => 'RAMOS',
@@ -80,7 +80,7 @@ class EmployeeSeeder extends Seeder
                 'date_hired' => '2021-01-11',
             ],
             [
-                'emp_ID' => '0005',
+                'emp_ID' => 'EMP0005',
                 'fname' => 'LOURDES',
                 'mname' => 'GARCIA',
                 'lname' => 'FERNANDEZ',
@@ -96,7 +96,7 @@ class EmployeeSeeder extends Seeder
                 'date_hired' => '2021-05-17',
             ],
             [
-                'emp_ID' => '0006',
+                'emp_ID' => 'EMP0006',
                 'fname' => 'EDUARDO',
                 'mname' => 'CRUZ',
                 'lname' => 'NAVARRO',
@@ -112,7 +112,7 @@ class EmployeeSeeder extends Seeder
                 'date_hired' => '2022-02-14',
             ],
             [
-                'emp_ID' => '0007',
+                'emp_ID' => 'EMP0007',
                 'fname' => 'ANA',
                 'mname' => 'PEREZ',
                 'lname' => 'SORIANO',
@@ -128,7 +128,7 @@ class EmployeeSeeder extends Seeder
                 'date_hired' => '2022-07-01',
             ],
             [
-                'emp_ID' => '0008',
+                'emp_ID' => 'EMP0008',
                 'fname' => 'RAMON',
                 'mname' => 'MENDOZA',
                 'lname' => 'AQUINO',
@@ -160,19 +160,37 @@ class EmployeeSeeder extends Seeder
                     'updated_at' => now(),
                 ])
             );
+
+            DB::table('official_times')->updateOrInsert(
+                ['empid' => $employee['emp_ID']],
+                [
+                    'morn_mon' => '08:00:00-12:00:00',
+                    'aft_mon' => '13:00:00-17:00:00',
+                    'morn_tue' => '08:00:00-12:00:00',
+                    'aft_tue' => '13:00:00-17:00:00',
+                    'morn_wed' => '08:00:00-12:00:00',
+                    'aft_wed' => '13:00:00-17:00:00',
+                    'morn_thu' => '08:00:00-12:00:00',
+                    'aft_thu' => '13:00:00-17:00:00',
+                    'morn_fri' => '08:00:00-12:00:00',
+                    'aft_fri' => '13:00:00-17:00:00',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
         }
 
         $employeeIds = DB::table('employees')->pluck('id', 'emp_ID');
 
         $officeHeads = [
-            'OUP-001' => '0001',
-            'OVPAA-001' => '0002',
-            'OVPAF-001' => '0003',
-            'HRMO-001' => '0004',
-            'OUR-001' => '0005',
-            'FO-001' => '0006',
-            'PDO-001' => '0007',
-            'ICTC-001' => '0008',
+            'OUP-001' => 'EMP0001',
+            'OVPAA-001' => 'EMP0002',
+            'OVPAF-001' => 'EMP0003',
+            'HRMO-001' => 'EMP0004',
+            'OUR-001' => 'EMP0005',
+            'FO-001' => 'EMP0006',
+            'PDO-001' => 'EMP0007',
+            'ICTC-001' => 'EMP0008',
         ];
 
         foreach ($officeHeads as $officeCode => $employeeNumber) {

@@ -30,9 +30,89 @@ use App\Models\Device;
 use PDF;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 
 class PdsController extends Controller
 {
+    private function resolveEmployeeRouteId($id): ?int
+    {
+        if ($id === null || $id === '') {
+            return null;
+        }
+
+        if (is_numeric($id)) {
+            return (int) $id;
+        }
+
+        $decrypted = shortDecrypt((string) $id);
+
+        return is_numeric($decrypted) ? (int) $decrypted : null;
+    }
+
+    private function redirectEncryptedRouteIfNeeded(string $routeName, $id)
+    {
+        if ($id !== null && is_numeric($id)) {
+            return redirect()->route($routeName, shortEncrypt((string) $id));
+        }
+
+        return null;
+    }
+
+    private function employeeIdForPds($id, string $routeName): array
+    {
+        if (auth()->guard('employee')->check()) {
+            if ($id === null) {
+                return [auth()->guard('employee')->id(), null];
+            }
+
+            $empid = $this->resolveEmployeeRouteId($id);
+
+            if ((int) $empid !== (int) auth()->guard('employee')->id()) {
+                return [null, redirect()->route($routeName)];
+            }
+
+            return [null, redirect()->route($routeName)];
+        }
+
+        if ($redirect = $this->redirectEncryptedRouteIfNeeded($routeName, $id)) {
+            return [null, $redirect];
+        }
+
+        $guard = $this->getGuard();
+        $empid = $id !== null
+            ? $this->resolveEmployeeRouteId($id)
+            : auth()->guard($guard)->user()->id;
+
+        if (!$empid) {
+            abort(404);
+        }
+
+        return [$empid, null];
+    }
+
+    private function padCsvAttribute($model, string $attribute, int $size, string $default = ''): void
+    {
+        if (!$model) {
+            return;
+        }
+
+        $values = explode(',', (string) ($model->{$attribute} ?? ''));
+        $values = array_pad($values, $size, $default);
+
+        $model->{$attribute} = implode(',', $values);
+    }
+
+    private function normalizePdsPdfData(?OtherInfo $otherinfo, ?InfoQuestion $infoquestion): void
+    {
+        $this->padCsvAttribute($otherinfo, 'skills_hob', 3);
+        $this->padCsvAttribute($otherinfo, 'recognition', 3);
+        $this->padCsvAttribute($otherinfo, 'mem_org', 3);
+
+        $this->padCsvAttribute($infoquestion, 'question', 13, '0');
+        $this->padCsvAttribute($infoquestion, 'detail', 13);
+        $this->padCsvAttribute($infoquestion, 'qdetails', 13);
+    }
+
     public function getGuard()
     {
         if(\Auth::guard('web')->check()) {
@@ -72,8 +152,17 @@ class PdsController extends Controller
 
     public function signature($id = null){
         $guard = $this->getGuard();
-        $empid = ($id) ? $id : auth()->guard($guard)->user()->id;
-        $employee = Employee::find($empid);
+        $empid = $id ? $this->resolveEmployeeRouteId($id) : auth()->guard($guard)->user()->id;
+
+        if (!$empid) {
+            abort(404);
+        }
+
+        if (auth()->guard('employee')->check() && (int) $empid !== (int) auth()->guard('employee')->id()) {
+            abort(403);
+        }
+
+        $employee = Employee::findOrFail($empid);
 
 
         $imageData = asset('Uploads/esign-default.jpg'); // fallback
@@ -92,10 +181,27 @@ class PdsController extends Controller
     public function uploadSignature(Request $request, $id = null)
     {
         $request->validate([
-            'signature' => 'required|image|mimes:png',
+            'signature' => 'required|image|mimes:png|max:2048',
         ]);
 
-        $employee = Employee::findOrFail($id);
+        $guard = $this->getGuard();
+        $empid = $id ? $this->resolveEmployeeRouteId($id) : auth()->guard($guard)->user()->id;
+
+        if (!$empid) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee record was not found.'
+            ], 404);
+        }
+
+        if (auth()->guard('employee')->check() && (int) $empid !== (int) auth()->guard('employee')->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not allowed to update this signature.'
+            ], 403);
+        }
+
+        $employee = Employee::findOrFail($empid);
 
         if ($request->hasFile('signature')) {
             try {
@@ -113,9 +219,14 @@ class PdsController extends Controller
                     'image_url' => $imageUrl,
                 ]);
             } catch (\Exception $e) {
+                Log::error('Unable to upload employee e-signature.', [
+                    'employee_id' => $employee->id,
+                    'exception' => $e,
+                ]);
+
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage() // for debugging only
+                    'message' => 'Unable to upload signature. Please try again.'
                 ], 500);
             }
         }
@@ -129,16 +240,24 @@ class PdsController extends Controller
     public function empPDS(){
         $guard = $this->getGuard();
         $empid = auth()->guard($guard)->user()->id; 
+
+        if ($guard === 'employee') {
+            return redirect()->route('PDS');
+        }
+
         return redirect()->route('PDS', shortEncrypt((string) $empid));
     }
 
     public function generatepds($id = null){
-        $guard = $this->getGuard();
-        $empid = ($id) ? $id : auth()->guard($guard)->user()->id;
-        $employee = Employee::find($empid);
+        [$empid, $redirect] = $this->employeeIdForPds($id, 'generatepds');
+        if ($redirect) {
+            return $redirect;
+        }
 
-        $familyBg = FamilyBg::where('empid', $employee->emp_ID)->first();
-        $educBg = EducBg::where('empid', $employee->emp_ID)->first();
+        $employee = Employee::findOrFail($empid);
+
+        $familyBg = FamilyBg::firstOrCreate(['empid' => $employee->emp_ID]);
+        $educBg = EducBg::firstOrCreate(['empid' => $employee->emp_ID]);
         $eligibility = Eligibility::where('empid', $employee->emp_ID)->where('status', '!=', 0)->get();
         $workexperience = WorkExperience::where('empid', $employee->emp_ID)
         ->where('status', '!=', 0)->orderByDesc('inc_date1')->orderByDesc('inc_date2')->get();
@@ -149,10 +268,11 @@ class PdsController extends Controller
         $learningdev = LearningDev::where('empid', $employee->emp_ID)->where('status', '!=', 0)
         ->where('status', '!=', 0)->orderByDesc('inc_date1')->orderByDesc('inc_date2')->get();
             
-        $otherinfo = OtherInfo::where('empid', $employee->emp_ID)->first();
-        $infoquestion = InfoQuestion::where('empid', $employee->emp_ID)->first();
-        $references = PdsReference::where('empid', $employee->emp_ID)->first();
-        $govids= GovId::where('empid', $employee->emp_ID)->first();
+        $otherinfo = OtherInfo::firstOrCreate(['empid' => $employee->emp_ID]);
+        $infoquestion = InfoQuestion::firstOrCreate(['empid' => $employee->emp_ID]);
+        $references = PdsReference::firstOrCreate(['empid' => $employee->emp_ID]);
+        $govids= GovId::firstOrCreate(['empid' => $employee->emp_ID]);
+        $this->normalizePdsPdfData($otherinfo, $infoquestion);
  
         $barangay = Barangay::find($employee->add_brgy);
         $city = City::where('city_id', $employee->add_city)->first();
@@ -182,32 +302,31 @@ class PdsController extends Controller
             'province1' => $province1,
         ];
 
-       $customPaper = array(0, 0, 612, 990);
+        $customPaper = array(0, 0, 612, 990);
         $pdf = \PDF::loadView('emp.generate-pds', compact('datas'))->setPaper($customPaper, 'portrait');
         $pdf->setOptions([
             'isHtml5ParserEnabled' => true,
-            'isRemoteEnabled' => true,
-            'enable_php' => true,
+            'isRemoteEnabled' => false,
+            'enable_php' => false,
+            'enable_javascript' => false,
+            'defaultFont' => 'Helvetica',
+            'dpi' => 96,
             'margin-top' => 0,
             'margin-right' => 0,
             'margin-bottom' => 0,
             'margin-left' => 0,
         ]);
-        $pdf->setCallbacks([
-            'before_render' => function ($domPdf) {
-                $domPdf->getCanvas()->page_text(10, 10, "Page {PAGE_NUM} of {PAGE_COUNT}", null, 10, array(0, 0, 0));
-            },
-        ]);
 
-        $pdf->render();
-
-        return $pdf->stream();
+        return $pdf->stream('pds-' . $employee->emp_ID . '.pdf');
     }
 
     public function genpdsAtthachment($id = null){
-        $guard = $this->getGuard();
-        $empid = ($id) ? $id : auth()->guard($guard)->user()->id;
-        $employee = Employee::find($empid);
+        [$empid, $redirect] = $this->employeeIdForPds($id, 'genpdsAtthachment');
+        if ($redirect) {
+            return $redirect;
+        }
+
+        $employee = Employee::findOrFail($empid);
         $workexperience = WorkExperience::where('empid', $employee->emp_ID)->where('status', '!=', 0)->get();
 
         $customPaper = array(0, 0, 612, 970);
@@ -217,15 +336,12 @@ class PdsController extends Controller
         $pdf->setOption('margin-right', 0);
         $pdf->setOption('margin-bottom', 0);
         $pdf->setOption('margin-left', 0);
+        $pdf->setOption('isRemoteEnabled', false);
+        $pdf->setOption('enable_php', false);
+        $pdf->setOption('enable_javascript', false);
+        $pdf->setOption('defaultFont', 'Helvetica');
+        $pdf->setOption('dpi', 96);
 
-        $pdf->setCallbacks([
-            'before_render' => function ($domPdf) {
-                $domPdf->getCanvas()->page_text(10, 10, "Page {PAGE_NUM} of {PAGE_COUNT}", null, 10, array(0, 0, 0));
-            },
-        ]);
-
-        $pdf->render();
-
-        return $pdf->stream();;
+        return $pdf->stream('pds-work-experience-' . $employee->emp_ID . '.pdf');
     }
 }

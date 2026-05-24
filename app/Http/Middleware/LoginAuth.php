@@ -31,13 +31,10 @@ class LoginAuth
             || $request->is('pds/references/*') || $request->is('pds/government-id/*')) {
                 return redirect()->route('empPDS')->with('error1', 'You do not have permission to access this page');
             }
-            if ($request->is('leave') && auth()->guard('employee')->user()->emp_status != 1) {
+            $employeeStatus = \App\Models\Status::find(auth()->guard('employee')->user()->emp_status);
+            if ($request->is('leave') && strtolower((string) optional($employeeStatus)->status_name) !== 'regular') {
                 return redirect()->route('empPDS')->with('error1', 'You do not have permission to access this page');
             }
-            if ($request->is('dashboard') || $request->is('dashboard/*')) {
-                return redirect()->route('empPDS')->with('error1', 'The dashboard is currently under development.');
-            }    
-
         }else {
             return redirect()->route('getLogin')->with('error1', 'You have to sign in first to access this page');
         }

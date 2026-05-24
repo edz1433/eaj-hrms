@@ -1,4 +1,7 @@
 ﻿/* Base theme (fallback) */
+@import "tailwindcss";
+@config "../../tailwind.config.js";
+
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -736,7 +739,7 @@
 .text-sidebar-primary-foreground { color: hsl(var(--sidebar-primary-foreground)) !important; }
 .text-sidebar-accent-foreground { color: hsl(var(--sidebar-accent-foreground)) !important; }
 
-.border-border { border-color: hsl(var(--border)) !important; }
+.border-border { border-color: hsl(var(--border) / .68) !important; }
 .border-border\/70 { border-color: hsl(var(--border) / .70) !important; }
 .border-border\/60 { border-color: hsl(var(--border) / .60) !important; }
 .border-border\/50 { border-color: hsl(var(--border) / .50) !important; }
@@ -769,6 +772,16 @@
 .hover\:text-accent-foreground:hover { color: hsl(var(--accent-foreground)) !important; }
 .hover\:text-sidebar-foreground:hover { color: hsl(var(--sidebar-foreground)) !important; }
 .hover\:text-sidebar-accent-foreground:hover { color: hsl(var(--sidebar-accent-foreground)) !important; }
+
+/* Softer card borders across the HRMS shell and public app screens. */
+.bg-card.border,
+.bg-background.border,
+.bg-popover.border,
+.rounded-lg.border,
+.rounded-xl.border,
+.rounded-2xl.border {
+  border-color: hsl(var(--border) / .68) !important;
+}
 
 /* Theme-only helpers required before Alpine finishes booting. */
 [x-cloak] { display: none !important; }

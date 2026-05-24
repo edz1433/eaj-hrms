@@ -16,11 +16,11 @@
                 <h1 class="text-base font-bold text-foreground">Personal Information</h1>
                 <p class="mt-0.5 text-xs text-muted-foreground">
                     Changes auto-save when you leave each field.
-                    @if($guard === 'employee')<span class="ml-1 text-amber-500"><i class="fas fa-lock text-[10px]"></i> Some fields are read-only</span>@endif
+                    @if($guard === 'employee')<span class="ml-1 text-amber-500"><i data-lucide="lock" class="inline h-3 w-3"></i> Some fields are read-only</span>@endif
                 </p>
             </div>
             <span class="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                <i class="fas fa-sync-alt text-[9px]"></i> Auto-save on
+                <i data-lucide="refresh-cw" class="h-3 w-3"></i> Auto-save on
             </span>
         </div>
 
@@ -38,7 +38,7 @@
         <div class="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden mb-4">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <i class="fas fa-user text-xs"></i>
+                    <i data-lucide="user-round" class="h-3.5 w-3.5"></i>
                 </div>
                 <span class="text-xs font-bold uppercase tracking-wider text-foreground">Personal Identity</span>
             </div>
@@ -142,7 +142,7 @@
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div>
                         <label class="{{ $labelCls }}">Citizenship</label>
-                        <select name="citizenship" class="{{ $selectCls }}">
+                        <select name="citizenship" id="pds-citizenship" class="{{ $selectCls }}">
                             <option disabled>Select</option>
                             <option value="1" data-column-id="{{ $empid }}" data-column-name="citizenship" @if($employee->citizenship==1) selected @endif>Filipino</option>
                             <option value="2" data-column-id="{{ $empid }}" data-column-name="citizenship" @if($employee->citizenship==2) selected @endif>Dual Citizenship</option>
@@ -152,22 +152,22 @@
                         <label class="{{ $labelCls }}">Citizenship By</label>
                         <div class="flex items-center gap-4 mt-2">
                             <label class="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
-                                <input type="radio" class="update-field accent-primary" value="1" name="c_category"
+                                <input type="radio" class="update-field accent-primary pds-citizenship-category" value="1" name="c_category"
                                        data-column-id="{{ $empid }}" data-column-name="c_category"
-                                       @if($employee->c_category==1) checked @endif>
+                                       @if($employee->c_category==1) checked @endif @if($employee->citizenship != 2) disabled @endif>
                                 By Birth
                             </label>
                             <label class="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
-                                <input type="radio" class="update-field accent-primary" value="2" name="c_category"
+                                <input type="radio" class="update-field accent-primary pds-citizenship-category" value="2" name="c_category"
                                        data-column-id="{{ $empid }}" data-column-name="c_category"
-                                       @if($employee->c_category==2) checked @endif>
+                                       @if($employee->c_category==2) checked @endif @if($employee->citizenship != 2) disabled @endif>
                                 By Naturalization
                             </label>
                         </div>
                     </div>
                     <div>
                         <label class="{{ $labelCls }}">Country</label>
-                        <select name="country" data-placeholder="Search country" class="{{ $selectCls }} js-search-select"
+                        <select name="country" id="pds-country" data-placeholder="Search country" class="{{ $selectCls }} js-search-select"
                                 @if($employee->citizenship != 2) disabled @endif>
                             <option value="" data-column-id="{{ $empid }}" data-column-name="country">Select</option>
                             @foreach(['Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia','Bosnia and Herzegovina','Botswana','Brazil','Brunei','Bulgaria','Burkina Faso','Burundi','Cabo Verde','Cambodia','Cameroon','Canada','Central African Republic','Chad','Chile','China','Colombia','Comoros','Congo','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Djibouti','Dominican Republic','Ecuador','Egypt','El Salvador','Eritrea','Estonia','Ethiopia','Fiji','Finland','France','Germany','Ghana','Greece','Guatemala','Haiti','Honduras','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Laos','Latvia','Lebanon','Libya','Lithuania','Luxembourg','Malaysia','Mexico','Moldova','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','Norway','Oman','Pakistan','Panama','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Rwanda','Saudi Arabia','Senegal','Singapore','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland','Syria','Taiwan','Tanzania','Thailand','Turkey','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Uruguay','Venezuela','Vietnam','Zambia','Zimbabwe'] as $country)
@@ -184,7 +184,7 @@
         <div class="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden mb-4">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400">
-                    <i class="fas fa-briefcase text-xs"></i>
+                    <i data-lucide="briefcase-business" class="h-3.5 w-3.5"></i>
                 </div>
                 <span class="text-xs font-bold uppercase tracking-wider text-foreground">Employment Details</span>
             </div>
@@ -268,7 +268,7 @@
         <div class="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden mb-4">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                    <i class="fas fa-heartbeat text-xs"></i>
+                    <i data-lucide="heart-pulse" class="h-3.5 w-3.5"></i>
                 </div>
                 <span class="text-xs font-bold uppercase tracking-wider text-foreground">Physical Information</span>
             </div>
@@ -318,7 +318,7 @@
         <div class="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden mb-4">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
-                    <i class="fas fa-id-card text-xs"></i>
+                    <i data-lucide="id-card" class="h-3.5 w-3.5"></i>
                 </div>
                 <span class="text-xs font-bold uppercase tracking-wider text-foreground">Government IDs & Contact</span>
             </div>
@@ -400,7 +400,7 @@
         <div class="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden mb-4">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
-                    <i class="fas fa-home text-xs"></i>
+                    <i data-lucide="house" class="h-3.5 w-3.5"></i>
                 </div>
                 <span class="text-xs font-bold uppercase tracking-wider text-foreground">Residential Address</span>
             </div>
@@ -466,7 +466,7 @@
         <div class="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden mb-4">
             <div class="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-5 py-3">
                 <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
-                    <i class="fas fa-map-pin text-xs"></i>
+                    <i data-lucide="map-pin" class="h-3.5 w-3.5"></i>
                 </div>
                 <span class="text-xs font-bold uppercase tracking-wider text-foreground">Permanent Address</span>
             </div>
@@ -539,6 +539,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     initPdsAutosave();
     initPdsSearchSelects();
+    initPdsCitizenshipToggle();
 
     document.addEventListener('click', (event) => {
         if (!event.target.closest('.pds-search-select')) {
@@ -546,7 +547,39 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.pds-search-select-trigger').forEach((trigger) => trigger.setAttribute('aria-expanded', 'false'));
         }
     });
+
+    window.addEventListener('resize', positionOpenPdsSearchSelects);
+    window.addEventListener('scroll', positionOpenPdsSearchSelects, true);
 });
+
+function initPdsCitizenshipToggle() {
+    const citizenship = document.getElementById('pds-citizenship');
+    const country = document.getElementById('pds-country');
+    const categories = document.querySelectorAll('.pds-citizenship-category');
+    if (!citizenship || !country) return;
+
+    const syncCitizenshipFields = () => {
+        const isDual = citizenship.value === '2';
+
+        country.disabled = !isDual;
+        if (!isDual) {
+            country.value = '';
+            categories.forEach((radio) => {
+                radio.checked = false;
+                radio.disabled = true;
+            });
+        } else {
+            categories.forEach((radio) => {
+                radio.disabled = false;
+            });
+        }
+
+        syncPdsSearchSelect(country);
+    };
+
+    citizenship.addEventListener('change', syncCitizenshipFields);
+    syncCitizenshipFields();
+}
 
 function initPdsAutosave() {
     const fields = document.querySelectorAll('.update-field');
@@ -675,7 +708,7 @@ function initPdsSearchSelects() {
                 <span class="pds-search-select-value min-w-0 flex-1 truncate"></span>
                 <i data-lucide="chevrons-up-down" class="h-3.5 w-3.5 shrink-0 opacity-60"></i>
             </button>
-            <div class="pds-search-select-panel absolute left-0 right-0 top-full z-[80] mt-1 hidden overflow-hidden rounded-xl border border-border/70 bg-popover text-popover-foreground shadow-xl">
+            <div class="pds-search-select-panel fixed z-[9999] hidden overflow-hidden rounded-xl border border-border/70 bg-popover text-popover-foreground shadow-xl">
                 <div class="flex items-center gap-2 border-b border-border/60 bg-background px-3 py-2">
                     <i data-lucide="search" class="h-3.5 w-3.5 text-muted-foreground"></i>
                     <input type="text" class="pds-search-select-input h-8 min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none" autocomplete="off" role="searchbox">
@@ -699,8 +732,8 @@ function initPdsSearchSelects() {
         syncPdsSearchSelect(select);
     });
 
+    window.refreshUi?.();
     window.refreshIcons?.();
-    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function getPdsSearchSelect(select) {
@@ -736,6 +769,7 @@ function openPdsSearchSelect(select) {
     wrapper.querySelector('.pds-search-select-panel').classList.remove('hidden');
     wrapper.querySelector('.pds-search-select-trigger').setAttribute('aria-expanded', 'true');
     renderPdsSearchOptions(select);
+    positionPdsSearchSelect(select);
     requestAnimationFrame(() => input.focus());
 }
 
@@ -773,8 +807,49 @@ function renderPdsSearchOptions(select) {
         });
     });
 
+    window.refreshUi?.(wrapper);
     window.refreshIcons?.();
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    positionPdsSearchSelect(select);
+}
+
+function positionOpenPdsSearchSelects() {
+    document.querySelectorAll('.pds-search-select-panel:not(.hidden)').forEach((panel) => {
+        const wrapper = panel.closest('.pds-search-select');
+        const select = wrapper?.previousElementSibling;
+        if (select?.matches('select.js-search-select')) {
+            positionPdsSearchSelect(select);
+        }
+    });
+}
+
+function positionPdsSearchSelect(select) {
+    const wrapper = getPdsSearchSelect(select);
+    if (!wrapper) return;
+
+    const trigger = wrapper.querySelector('.pds-search-select-trigger');
+    const panel = wrapper.querySelector('.pds-search-select-panel');
+    if (!trigger || !panel || panel.classList.contains('hidden')) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const gap = 6;
+    const viewportPadding = 12;
+    const belowSpace = window.innerHeight - rect.bottom - viewportPadding;
+    const aboveSpace = rect.top - viewportPadding;
+    const preferredHeight = 310;
+    const openUp = belowSpace < 180 && aboveSpace > belowSpace;
+    const maxHeight = Math.max(160, Math.min(preferredHeight, openUp ? aboveSpace - gap : belowSpace - gap));
+    const panelTop = openUp ? Math.max(viewportPadding, rect.top - gap - maxHeight) : Math.min(window.innerHeight - viewportPadding - maxHeight, rect.bottom + gap);
+
+    panel.style.left = `${Math.max(viewportPadding, rect.left)}px`;
+    panel.style.top = `${panelTop}px`;
+    panel.style.width = `${Math.min(rect.width, window.innerWidth - viewportPadding * 2)}px`;
+    panel.style.maxHeight = `${maxHeight}px`;
+
+    const options = panel.querySelector('.pds-search-select-options');
+    if (options) {
+        options.style.maxHeight = `${Math.max(96, maxHeight - 49)}px`;
+    }
 }
 
 function escapePdsSearchText(text) {

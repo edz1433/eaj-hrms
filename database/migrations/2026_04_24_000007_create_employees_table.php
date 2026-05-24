@@ -104,14 +104,9 @@ return new class extends Migration
 
             // ── Profile / Documents ───────────────────────────────────────────
             $table->string('profile')->nullable();          // profile photo path
-            $table->text('esign')->nullable();              // e-signature path/data
+            $table->longText('esign')->nullable();          // encrypted e-signature image data
             $table->tinyInteger('dpn')->default(0);         // data privacy notice accepted
             $table->tinyInteger('stat_1')->default(1);      // account status: 1=active, 0=suspended
-
-            // ── SPMS extras ───────────────────────────────────────────────────
-            $table->string('f1')->nullable();
-            $table->string('f2')->nullable();
-            $table->string('f3')->nullable();
 
             $table->timestamps();
 

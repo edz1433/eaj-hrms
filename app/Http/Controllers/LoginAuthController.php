@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class LoginAuthController extends Controller
 {
@@ -17,7 +18,7 @@ class LoginAuthController extends Controller
             return redirect()->route('dashboard');
         }
         if (Auth::guard('employee')->check()) {
-            return redirect()->route('drive');
+            return redirect()->route('empPDS');
         }
         return view('login');
     }
@@ -28,7 +29,7 @@ class LoginAuthController extends Controller
             return redirect()->route('dashboard');
         }
         if (Auth::guard('employee')->check()) {
-            return redirect()->route('drive');
+            return redirect()->route('empPDS');
         }
         return view('login');   // single unified login page
     }
@@ -42,8 +43,10 @@ class LoginAuthController extends Controller
             'password' => 'required|string',
         ]);
 
+        $email = trim((string) $request->email);
+
         $credentials = [
-            'email'    => $request->email,
+            'email'    => $email,
             'password' => $request->password,
         ];
 
@@ -61,15 +64,17 @@ class LoginAuthController extends Controller
         }
 
         // ── 2. Try employee guard using org_email ────────────────────────────
-        $employee = Employee::where('org_email', $request->email)
+        $employee = Employee::where(function ($query) use ($email) {
+                                $query->where('org_email', $email)
+                                      ->orWhere('email', $email);
+                            })
                             ->where('stat_1', 1)
                             ->first();
 
         if ($employee) {
-            if (Auth::guard('employee')->attempt([
-                'org_email' => $request->email,
-                'password'  => $request->password,
-            ])) {
+            if ($employee->password && Hash::check($request->password, $employee->password)) {
+                Auth::guard('employee')->login($employee);
+
                 return redirect()->route('empPDS')->with('success', 'Login successful.');
             }
 

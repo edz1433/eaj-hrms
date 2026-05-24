@@ -26,12 +26,70 @@ class LeaveApplicationController extends Controller
         }
     }  
 
+    private function resolveAuthenticatedEmployee()
+    {
+        $guard = $this->getGuard();
+        $user = auth()->guard($guard)->user();
+
+        if (!$user) {
+            abort(403);
+        }
+
+        if ($guard === 'employee') {
+            return $user;
+        }
+
+        if (!$user->emp_ID) {
+            abort(403, 'This user account is not linked to an employee record.');
+        }
+
+        return Employee::where('emp_ID', $user->emp_ID)->firstOrFail();
+    }
+
+    private function leaveDateBounds(string $dateRange): array
+    {
+        $dates = preg_split('/\s+to\s+/', trim($dateRange));
+        $startDate = Carbon::parse(trim($dates[0]));
+        $endDate = isset($dates[1]) ? Carbon::parse(trim($dates[1])) : $startDate->copy();
+
+        if ($endDate->lessThan($startDate)) {
+            [$startDate, $endDate] = [$endDate, $startDate];
+        }
+
+        return [$startDate->startOfDay(), $endDate->startOfDay()];
+    }
+
+    private function countWeekdaysInRange(string $dateRange): int
+    {
+        [$startDate, $endDate] = $this->leaveDateBounds($dateRange);
+        $days = 0;
+
+        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+            if (!$date->isWeekend()) {
+                $days++;
+            }
+        }
+
+        return $days;
+    }
+
     public function LeaveAppCreate(Request $request)
     {
         $validatedData = $request->validate([
             'empid' => 'required|exists:employees,emp_ID',
             'date_range' => 'required|string',
+            'leave_type' => 'required',
         ]);
+
+        try {
+            $daysApplied = $this->countWeekdaysInRange($request->date_range);
+        } catch (\Throwable $e) {
+            return redirect()->back()->withInput()->with('error', 'Please select a valid inclusive date range.');
+        }
+
+        if ($daysApplied < 1) {
+            return redirect()->back()->withInput()->with('error', 'Inclusive dates must include at least one weekday.');
+        }
 
         $checkleave = LeaveApplication::where('empid', $request->empid)->where('history', 1)->whereNotIn('status', [3, 4])->get();
 
@@ -66,7 +124,7 @@ class LeaveApplicationController extends Controller
             'leave_purpose' => $purpose,
             'leave_detail' => $firstDetail,
             'date_range' => $request->date_range,
-            'days' => $request->days,
+            'days' => $daysApplied,
             'total_vl' => $employee->vl,
             'total_sl' => $employee->sl,
             'date_filing' => $request->date_filing . ' ' . \Carbon\Carbon::now('Asia/Manila')->format('H:i:s'),
@@ -120,10 +178,10 @@ class LeaveApplicationController extends Controller
 
     public function leaveStatus($id = null){
         $guard = $this->getGuard();
-        $empid = ($id) ? $id : auth()->guard($guard)->user()->id;
-        $employee = Employee::find($empid);
+        $employee = $id ? Employee::findOrFail($id) : $this->resolveAuthenticatedEmployee();
+        $empid = $employee->id;
 
-        $oic = Office::leftJoin('dbcpsuhris.employees as oic', 'offices.oic_id', '=', 'oic.id')
+        $oic = Office::leftJoin('employees as oic', 'offices.oic_id', '=', 'oic.id')
             ->where('offices.id', $employee->emp_dept)
             ->select(
                 'offices.*',
@@ -222,7 +280,9 @@ class LeaveApplicationController extends Controller
         
         $emplalls = Employee::where('emp_status', 1)->get();
 
-        return view("leaves.status", compact('guard', 'setting', 'employee', 'leavesapp', 'isOfficeHead', 'leavesapphead', 'oic', 'emplalls', 'empid'));
+        $leaveMode = ($guard === 'web' && $id) ? 'management' : 'personal';
+
+        return view("leaves.status", compact('guard', 'setting', 'employee', 'leavesapp', 'isOfficeHead', 'leavesapphead', 'oic', 'emplalls', 'empid', 'leaveMode'));
     }
 
     public function leaveWpay(Request $request)
@@ -993,7 +1053,8 @@ class LeaveApplicationController extends Controller
         imagedestroy($image);
             
         $customPaper = [0, 0, 595.28, 841.89];
-        $pdf = \PDF::loadView('leaves.generate-leave', compact('leaveApplication', 'barcodePath'))->setPaper($customPaper, 'portrait')
+        $leaveFormHeaderSrc = Setting::singleton()->leaveFormHeaderPdfSrc();
+        $pdf = \PDF::loadView('leaves.generate-leave', compact('leaveApplication', 'barcodePath', 'leaveFormHeaderSrc'))->setPaper($customPaper, 'portrait')
             ->setOption('margin-top', 0)
             ->setOption('margin-right', 0)
             ->setOption('margin-bottom', 0)
@@ -1107,7 +1168,8 @@ class LeaveApplicationController extends Controller
         }
     
         $customPaper = array(0, 0, 595.28, 841.89);
-        $pdf = \PDF::loadView('leaves.generate-leave', compact('leaveApplication'))->setPaper($customPaper, 'portrait');
+        $leaveFormHeaderSrc = Setting::singleton()->leaveFormHeaderPdfSrc();
+        $pdf = \PDF::loadView('leaves.generate-leave', compact('leaveApplication', 'leaveFormHeaderSrc'))->setPaper($customPaper, 'portrait');
         
         $pdf->setOption('margin-top', 0);
         $pdf->setOption('margin-right', 0);
@@ -1127,11 +1189,8 @@ class LeaveApplicationController extends Controller
 
     public function historyRead($id = null){
         $guard = $this->getGuard();
-        $authid = auth()->guard($guard)->user()->id;
-        
-        $empid = ($guard == "web") ? $id : $authid;
-        
-        $employee = Employee::find($empid);
+        $employee = $id ? Employee::findOrFail($id) : $this->resolveAuthenticatedEmployee();
+        $empid = $employee->id;
         $emplalls = Employee::where('emp_status', 1)->get();
         
         $settings = Setting::join('employees as hr', 'hr.id', '=', 'settings.hr')
@@ -1145,7 +1204,7 @@ class LeaveApplicationController extends Controller
 
         
 
-        if($guard == "web"){
+        if($guard == "web" || $id === null){
 
             $leaveApplication = LeaveApplication::where('leave_applications.history', 2)
             ->where('leave_applications.empid', $employee->emp_ID)
@@ -1168,7 +1227,9 @@ class LeaveApplicationController extends Controller
 
         }
 
-        return view('leaves.history', compact('guard', 'empid', 'employee', 'emplalls', 'leaveApplication', 'leaveApplication1'));
+        $leaveMode = ($guard === 'web' && $id) ? 'management' : 'personal';
+
+        return view('leaves.history', compact('guard', 'empid', 'employee', 'emplalls', 'leaveApplication', 'leaveApplication1', 'leaveMode'));
     }
 
     public function getPdfPath(Request $request)

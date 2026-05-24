@@ -33,6 +33,43 @@ if (!function_exists('shortDecrypt')) {
     }
 }
 
+if (!function_exists('resolveEmployeeRouteId')) {
+    function resolveEmployeeRouteId($id): ?int
+    {
+        if ($id === null || $id === '') {
+            return null;
+        }
+
+        if (is_numeric($id)) {
+            return (int) $id;
+        }
+
+        $decrypted = shortDecrypt((string) $id);
+
+        return is_numeric($decrypted) ? (int) $decrypted : null;
+    }
+}
+
+if (!function_exists('pdsRouteEmployeeId')) {
+    function pdsRouteEmployeeId($id = null, ?string $guard = null): int
+    {
+        $guard = $guard ?: guard();
+        $empid = $id !== null
+            ? resolveEmployeeRouteId($id)
+            : Auth::guard($guard)->id();
+
+        if (!$empid) {
+            abort(404);
+        }
+
+        if (Auth::guard('employee')->check() && (int) $empid !== (int) Auth::guard('employee')->id()) {
+            abort(403);
+        }
+
+        return (int) $empid;
+    }
+}
+
 
 
 

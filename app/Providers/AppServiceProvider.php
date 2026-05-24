@@ -20,23 +20,32 @@ class AppServiceProvider extends ServiceProvider
         Paginator::defaultView('vendor.pagination.tailwind');
 
         View::composer('*', function ($view) {
+            $request = request();
+
+            if ($request->attributes->has('shared_view_data')) {
+                $view->with($request->attributes->get('shared_view_data'));
+                return;
+            }
+
             $cachedSetting = Setting::singleton();
-            $view->with('sysTheme', $cachedSetting->theme ?? 'ea');
-            $view->with('sysPrimaryColor', $cachedSetting->primary_color);
-            $view->with('sysAccentColor', $cachedSetting->accent_color);
-            $view->with('locCtx',  $cachedSetting->locationContext());
-            $view->with('orgName', $cachedSetting->org_name ?? 'HRMS');
-            $view->with('sysName', $cachedSetting->system_name ?: 'EAJ HRMS');
-            $view->with('orgType', $cachedSetting->org_type ?? '');
+            $sharedData = [
+                'sysTheme' => $cachedSetting->theme ?? 'ea',
+                'sysPrimaryColor' => $cachedSetting->primary_color,
+                'sysAccentColor' => $cachedSetting->accent_color,
+                'locCtx' => $cachedSetting->locationContext(),
+                'orgName' => $cachedSetting->org_name ?? 'HRMS',
+                'sysName' => $cachedSetting->system_name ?: 'EAJ HRMS',
+                'orgType' => $cachedSetting->org_type ?? '',
+            ];
 
             // Resolve active guard and share globally
             $guard = Auth::guard('web')->check() ? 'web'
                    : (Auth::guard('employee')->check() ? 'employee' : null);
-            $view->with('guard', $guard);
+            $sharedData['guard'] = $guard;
 
             // Share MenuHelper instance globally
             $menuHelper = new MenuHelper();
-            $view->with('menuHelper', $menuHelper);
+            $sharedData['menuHelper'] = $menuHelper;
             
             // Create helper function for menu access
             $canAccess = function($key) use ($guard, $menuHelper) {
@@ -45,10 +54,16 @@ class AppServiceProvider extends ServiceProvider
                 }
                 return $menuHelper->isVisible($key);
             };
-            $view->with('canAccess', $canAccess);
+            $sharedData['canAccess'] = $canAccess;
 
             // Admin (web guard) notifications
             if (Auth::guard('web')->check()) {
+                $notificationIds = Notification::query()
+                    ->where('utype', 'hr')
+                    ->orderBy('created_at', 'desc')
+                    ->limit(10)
+                    ->pluck('id');
+
                 $notifications = Notification::query()
                     ->select(
                         'notifications.id',
@@ -59,7 +74,7 @@ class AppServiceProvider extends ServiceProvider
                         'notifications.status as notifstat',
                         'notifications.created_at as notif_created_at'
                     )
-                    ->where('notifications.utype', 'hr')
+                    ->whereIn('notifications.id', $notificationIds)
                     ->leftJoin('leave_applications', function ($j) {
                         $j->on('notifications.lapp_id', '=', 'leave_applications.id')
                           ->where('notifications.module', 'leave');
@@ -139,34 +154,57 @@ class AppServiceProvider extends ServiceProvider
                     ->orderBy('notifications.created_at', 'desc')
                     ->get();
 
-                $notificationsCount = $notifications->where('notifstat', 0)->count();
-
-                $view->with('notifications', $notifications)
-                     ->with('notificationsCount', $notificationsCount);
-
-                // Empty defaults so employee partials don't throw
-                $view->with('notifications1', collect())
-                     ->with('notificationsCount1', 0);
+                $sharedData['notifications'] = $notifications;
+                $sharedData['notificationsCount'] = Notification::where('utype', 'hr')
+                    ->where('status', 0)
+                    ->count();
+                $sharedData['notifications1'] = collect();
+                $sharedData['notificationsCount1'] = collect();
 
             } elseif (Auth::guard('employee')->check()) {
-                // Employee notifications — raw collection, filtered in the blade partial
-                $notifications1     = Notification::where('utype', 'employee')->get();
-                $notificationsCount1 = $notifications1;   // blade partial counts by empid
+                // Employee notifications, scoped before rendering in the blade partial.
+                $employee = Auth::guard('employee')->user();
+                $notifications1 = Notification::query()
+                    ->select(
+                        'id',
+                        'lapp_id',
+                        'empid',
+                        'module',
+                        'category',
+                        'status as notifstat',
+                        'created_at as notif_created_at'
+                    )
+                    ->where('utype', 'employee')
+                    ->where('empid', $employee->emp_ID)
+                    ->whereNotIn('module', ['leavecredit', 'leavecreditadd'])
+                    ->orderBy('created_at', 'desc')
+                    ->limit(10)
+                    ->get();
 
-                $view->with('notifications1', $notifications1)
-                     ->with('notificationsCount1', $notificationsCount1);
+                $notificationsCount1 = Notification::query()
+                    ->where('utype', 'employee')
+                    ->where('empid', $employee->emp_ID)
+                    ->whereNotIn('module', ['leavecredit', 'leavecreditadd'])
+                    ->where('status', 0)
+                    ->count();
+
+                $sharedData['notifications1'] = $notifications1;
+                $sharedData['notificationsCount1'] = $notificationsCount1;
 
                 // Empty defaults so admin partials don't throw
-                $view->with('notifications', collect())
-                     ->with('notificationsCount', 0);
+                $sharedData['notifications'] = collect();
+                $sharedData['notificationsCount'] = 0;
 
             } else {
                 // Unauthenticated pages (login, verify, etc.)
-                $view->with('notifications', collect())
-                     ->with('notificationsCount', 0)
-                     ->with('notifications1', collect())
-                     ->with('notificationsCount1', 0);
+                $sharedData['notifications'] = collect();
+                $sharedData['notificationsCount'] = 0;
+                $sharedData['notifications1'] = collect();
+                $sharedData['notificationsCount1'] = collect();
             }
+
+            $view->with($sharedData);
+            $request->attributes->set('shared_view_data', $sharedData);
         });
     }
 }

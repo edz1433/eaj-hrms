@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-use Illuminate\Support\Facades\DB;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Office;
@@ -18,15 +18,12 @@ class OfficeController extends Controller
         }
     }
     
-    public function officeList() {
+    public function officeList(Request $request) {
         $guard = $this->getGuaard();
-        $office = Office::leftJoin('dbcpsuhris.employees', 'offices.office_head_id', '=', 'dbcpsuhris.employees.id')
-                ->leftJoin('dbcpsuhris.employees as oic', 'offices.oic_id', '=', 'oic.id')
-                ->get(['offices.*', 'dbcpsuhris.employees.fname as efname', 'dbcpsuhris.employees.lname as elname' , 'oic.fname as ofname', 'oic.lname as olname']);      
-        
-        $employee = Employee::all()->where('emp_status', 1);
-        
-        return view("offdept.officelist", compact('office', 'employee', 'guard'));
+        [$office, $stats] = $this->officeDirectoryData($request);
+        $employee = Employee::where('emp_status', 1)->orderBy('lname')->orderBy('fname')->get();
+
+        return view("offdept.officelist", compact('office', 'employee', 'guard', 'stats'));
     }
 
     public function officeCreate(Request $request){
@@ -55,7 +52,6 @@ class OfficeController extends Controller
                     'office_abbr'=>$request->input('OfficeAbbreviation'),
                     'office_head_id'=>$request->input('office_head_id'),
                     'oic_id'=>$request->input('oic_id'),
-                    'group_by'=> '0',
                 ]);
                 
                 return redirect()->back()->with('success', 'Office Added Successfully'); 
@@ -63,24 +59,22 @@ class OfficeController extends Controller
         }
     }
 
-    public function officeEdit($id)
+    public function officeEdit(Request $request, $id)
     {
         $guard = $this->getGuaard();
-        $employee = Employee::all()->where('emp_status', 1);
-        $office = Office::leftJoin('dbcpsuhris.employees', 'offices.office_head_id', '=', 'dbcpsuhris.employees.id')
-                ->leftJoin('dbcpsuhris.employees as oic', 'offices.oic_id', '=', 'oic.id')
-                ->get(['offices.*', 'dbcpsuhris.employees.fname as efname', 'dbcpsuhris.employees.lname as elname', 'oic.fname as ofname', 'oic.lname as olname']);         
+        $employee = Employee::where('emp_status', 1)->orderBy('lname')->orderBy('fname')->get();
+        [$office, $stats] = $this->officeDirectoryData($request);
  
         $offEdit = Office::find($id);
 
-        return view("offdept.officelist", compact('offEdit', 'office', 'employee', 'guard'));
+        return view("offdept.officelist", compact('offEdit', 'office', 'employee', 'guard', 'stats'));
     }
     
     public function officeUpdate(Request $request){
         $validator = Validator::make($request->all(), [
             'OfficeName'=>'required',
             'OfficeAbbreviation'=>'required',
-            'office_head_id'=> 'required',
+            'office_head_id'=> 'nullable',
             'oic_id' => 'nullable',
             'GroupBy' => 'nullable',
         ]);
@@ -101,9 +95,8 @@ class OfficeController extends Controller
                     'office_abbr'=>$request->input('OfficeAbbreviation'),
                     'office_head_id'=>$request->input('office_head_id'),
                     'oic_id'=>$request->input('oic_id'),
-                    'group_by'=>'0',
                 ];
-                DB::table('dbcpsupms.offices')->where('id', $request->oid)->update($update);
+                Office::where('id', $request->oid)->update($update);
 
                 return redirect()->back()->with('success', 'Office Updated Successfully');
             }
@@ -118,5 +111,56 @@ class OfficeController extends Controller
             'status'=>200,
             'message'=>"Deleted Successfully",
         ]);
+    }
+
+    private function officeDirectoryData(Request $request): array
+    {
+        $perPage = (int) $request->input('per_page', 10);
+        if (!in_array($perPage, [10, 15, 25, 50, 100])) {
+            $perPage = 10;
+        }
+
+        $query = Office::with(['head:id,emp_ID,fname,lname,position', 'oic:id,emp_ID,fname,lname,position'])
+            ->withCount(['employees as employee_count' => function ($q) {
+                $q->where('emp_status', 1);
+            }]);
+
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('office_name', 'like', "%{$search}%")
+                  ->orWhere('office_abbr', 'like', "%{$search}%")
+                  ->orWhere('office_code', 'like', "%{$search}%")
+                  ->orWhereHas('head', function ($head) use ($search) {
+                      $head->where('fname', 'like', "%{$search}%")
+                           ->orWhere('lname', 'like', "%{$search}%")
+                           ->orWhere('emp_ID', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('oic', function ($oic) use ($search) {
+                      $oic->where('fname', 'like', "%{$search}%")
+                          ->orWhere('lname', 'like', "%{$search}%")
+                          ->orWhere('emp_ID', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($request->input('staffing') === 'with_head') {
+            $query->whereNotNull('office_head_id');
+        }
+
+        if ($request->input('staffing') === 'without_head') {
+            $query->whereNull('office_head_id');
+        }
+
+        $office = $query->orderBy('office_name')->paginate($perPage)->withQueryString();
+
+        $stats = [
+            'total' => Office::count(),
+            'with_head' => Office::whereNotNull('office_head_id')->count(),
+            'without_head' => Office::whereNull('office_head_id')->count(),
+            'with_oic' => Office::whereNotNull('oic_id')->count(),
+            'assigned_employees' => Employee::where('emp_status', 1)->whereNotNull('emp_dept')->count(),
+        ];
+
+        return [$office, $stats];
     }
 }

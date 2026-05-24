@@ -42,7 +42,7 @@
             <thead>
                 <tr>
                     <th rowspan="2" colspan="2"></th>
-                    <th colspan="4" class="text-center">TIREDNESS</th>
+                    <th colspan="4" class="text-center">TARDINESS</th>
                     <th colspan="4" class="text-center">UNDERTIME</th>
                 </tr>
                 <tr>
@@ -73,11 +73,11 @@
                         <td class="text-center {{ ($record->morning_count >= 10) ? 'text-danger' : '' }}">{{ $record->morning_count }}</td>
                         <td class="text-center">{{ $record->total_hours }} : {{ $record->remaining_minutes }}</td>
                         <td class="text-center {{ ($record->noon_count >= 10) ? 'text-danger' : '' }}">{{ $record->noon_count }}</td>
-                        <td class="text-center">{{ floor($record->total_noon_minutes / 60) }} : {{ $record->total_noon_minutes % 60 }}</td>
+                        <td class="text-center">{{ floor((int) $record->total_noon_minutes / 60) }} : {{ (int) $record->total_noon_minutes % 60 }}</td>
                         <td class="text-center {{ ($record->undertime_count >= 10) ? 'text-danger' : '' }}">{{ $record->undertime_count }}</td>
-                        <td class="text-center">{{ floor($record->total_undertime_minutes / 60) }} : {{ $record->total_undertime_minutes % 60 }}</td>
+                        <td class="text-center">{{ floor((int) $record->total_undertime_minutes / 60) }} : {{ (int) $record->total_undertime_minutes % 60 }}</td>
                         <td class="text-center {{ ($record->afternoon_undertime_count >= 10) ? 'text-danger' : '' }}">{{ $record->afternoon_undertime_count }}</td>
-                        <td class="text-center">{{ floor($record->total_afternoon_undertime_minutes / 60) }} : {{ $record->total_afternoon_undertime_minutes % 60 }}</td>
+                        <td class="text-center">{{ floor((int) $record->total_afternoon_undertime_minutes / 60) }} : {{ (int) $record->total_afternoon_undertime_minutes % 60 }}</td>
                     </tr>
                 @endforeach
             </tbody>

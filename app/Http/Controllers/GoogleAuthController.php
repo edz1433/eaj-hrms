@@ -19,7 +19,7 @@ class GoogleAuthController extends Controller
     {
         try {
             $googleUser = Socialite::driver('google')->user();
-            $email = $googleUser->getEmail();
+            $email = trim((string) $googleUser->getEmail());
 
             // ── 1. Try web (User) guard ───────────────────────────────────────
             $user = User::where('email', $email)->first();
@@ -30,7 +30,9 @@ class GoogleAuthController extends Controller
             }
 
             // ── 2. Try employee guard ─────────────────────────────────────────
-            $employee = Employee::where('org_email', $email)->first();
+            $employee = Employee::where('org_email', $email)
+                ->orWhere('email', $email)
+                ->first();
 
             if ($employee) {
                 if ($employee->stat_1 != 1) {

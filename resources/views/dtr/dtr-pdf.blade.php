@@ -213,18 +213,16 @@
 <body>
     
     <div class="column1"> 
-        <img src="{{ asset('Uploads/dtr-header.png') }}" width="110%" class="mt-5" alt="Header Image">
+        <img src="{{ $dtrHeaderSrc ?? ('file:///' . str_replace('\\', '/', public_path('Uploads/dtr-header.png'))) }}" width="110%" class="mt-5" alt="Header Image">
         <div>
-            <span class="font">Name of Employee :</span> <span class="header" style="relative; display: inline-block; width: 73%; text-align: left;">&nbsp; @if(isset($employee)) {{ strtoupper(ucwords($employee->fname)) }} {{ strtoupper(substr($employee->mname, 0, 1)) . '.' }} {{ strtoupper(ucwords($employee->lname)) }} {{ strtoupper(ucwords($employee->suffix)) }}@endif</span>
+            <span class="font">Name of Employee :</span> <span class="header" style="relative; display: inline-block; width: 73%; text-align: left;">&nbsp; @if(isset($employee)) {{ strtoupper(ucwords((string) $employee->fname)) }} {{ $employee->mname ? strtoupper(substr($employee->mname, 0, 1)) . '.' : '' }} {{ strtoupper(ucwords((string) $employee->lname)) }} {{ strtoupper(ucwords((string) $employee->suffix)) }}@endif</span>
         </div>
         <div style="margin-top: -9px;">
             <span class="font">Office/Campus/College : </span>
             <span class="header" style="position: relative; display: inline-block; width: 67.5%; text-align: left;">
                 &nbsp;
                 {{ isset($employee)
-                    ? ($employee->camp_id == 1
-                        ? strtoupper(ucwords($employee->office_name))
-                        : strtoupper(ucwords($employee->campus_name)))
+                    ? strtoupper(ucwords((string) ($employee->office_name ?: $employee->campus_name)))
                     : ''
                 }}
             </span>
@@ -345,7 +343,7 @@
             <span style="margin-left: 20px;">I <b>CERTIFY</b></span> on my honor that the above is a true and correct report of the hours of work performed, record of which was made daily at the time of arrival and departure from office.
         </p>    
         <div>
-            <span class="font"><b>@if(isset($employee)) {{ strtoupper(ucwords($employee->fname)) }} {{ strtoupper(substr($employee->mname, 0, 1)) . '.' }} {{ strtoupper(ucwords($employee->lname)) }} {{ strtoupper(ucwords($employee->suffix)) }}@endif</b></span><br>
+            <span class="font"><b>@if(isset($employee)) {{ strtoupper(ucwords((string) $employee->fname)) }} {{ $employee->mname ? strtoupper(substr($employee->mname, 0, 1)) . '.' : '' }} {{ strtoupper(ucwords((string) $employee->lname)) }} {{ strtoupper(ucwords((string) $employee->suffix)) }}@endif</b></span><br>
             <span class="header" style="relative; display: inline-block; width: 50%; text-align: center;"></span>
             <span class="font" style="relative; display: inline-block; width: 100%; text-align: center; margin-top: -25px;">Employee’s Signature</span>
             <span class="font" style="relative; display: inline-block; width: 100%; text-align: center; margin-top: -37px;">over Printed Name</span>
@@ -358,7 +356,7 @@
                 @if(in_array($supervisor->prefix, ['Dr.', 'Engr.']))
                     {{ strtoupper(ucwords($supervisor->prefix)) }}
                 @endif
-                {{ strtoupper(ucwords($supervisor->fname)) }} {{ strtoupper(substr($supervisor->mname, 0, 1)) . '.' }} {{ strtoupper(ucwords($supervisor->lname)) }}{{ ($supervisor->suffix) ? ', '.$supervisor->suffix : ''}}
+                {{ strtoupper(ucwords((string) $supervisor->fname)) }} {{ $supervisor->mname ? strtoupper(substr($supervisor->mname, 0, 1)) . '.' : '' }} {{ strtoupper(ucwords((string) $supervisor->lname)) }}{{ ($supervisor->suffix) ? ', '.$supervisor->suffix : ''}}
                 @if(!in_array($supervisor->prefix, ['Dr.', 'Engr.']))
                     {{ ', '.strtoupper(ucwords($supervisor->prefix)) }}
                 @endif
@@ -373,18 +371,16 @@
         </p>
     </div>
     <div class="column2"> 
-        <img src="{{ asset('Uploads/dtr-header.png') }}" width="110%" class="mt-5" alt="Header Image">
+        <img src="{{ $dtrHeaderSrc ?? ('file:///' . str_replace('\\', '/', public_path('Uploads/dtr-header.png'))) }}" width="110%" class="mt-5" alt="Header Image">
         <div>
-            <span class="font">Name of Employee :</span> <span class="header" style="relative; display: inline-block; width: 73%; text-align: left;">&nbsp; @if(isset($employee)) {{ strtoupper(ucwords($employee->fname)) }} {{ strtoupper(substr($employee->mname, 0, 1)) . '.' }} {{ strtoupper(ucwords($employee->lname)) }} {{ strtoupper(ucwords($employee->suffix)) }}@endif</span>
+            <span class="font">Name of Employee :</span> <span class="header" style="relative; display: inline-block; width: 73%; text-align: left;">&nbsp; @if(isset($employee)) {{ strtoupper(ucwords((string) $employee->fname)) }} {{ $employee->mname ? strtoupper(substr($employee->mname, 0, 1)) . '.' : '' }} {{ strtoupper(ucwords((string) $employee->lname)) }} {{ strtoupper(ucwords((string) $employee->suffix)) }}@endif</span>
         </div>
         <div style="margin-top: -9px;">
             <span class="font">Office/Campus/College : </span>
             <span class="header" style="position: relative; display: inline-block; width: 67.5%; text-align: left;">
                 &nbsp;
                 {{ isset($employee)
-                    ? ($employee->camp_id == 1
-                        ? strtoupper(ucwords($employee->office_name))
-                        : strtoupper(ucwords($employee->campus_name)))
+                    ? strtoupper(ucwords((string) ($employee->office_name ?: $employee->campus_name)))
                     : ''
                 }}
             </span>
@@ -504,7 +500,7 @@
             <span style="margin-left: 20px;">I <b>CERTIFY</b></span> on my honor that the above is a true and correct report of the hours of work performed, record of which was made daily at the time of arrival and departure from office.
         </p> 
         <div>
-            <span class="font"><b>@if(isset($employee)) {{ strtoupper(ucwords($employee->fname)) }} {{ strtoupper(substr($employee->mname, 0, 1)) . '.' }} {{ strtoupper(ucwords($employee->lname)) }} {{ strtoupper(ucwords($employee->suffix)) }}@endif</b></span><br>
+            <span class="font"><b>@if(isset($employee)) {{ strtoupper(ucwords((string) $employee->fname)) }} {{ $employee->mname ? strtoupper(substr($employee->mname, 0, 1)) . '.' : '' }} {{ strtoupper(ucwords((string) $employee->lname)) }} {{ strtoupper(ucwords((string) $employee->suffix)) }}@endif</b></span><br>
             <span class="header" style="relative; display: inline-block; width: 50%; text-align: center;"></span>
             <span class="font" style="relative; display: inline-block; width: 100%; text-align: center; margin-top: -25px;">Employee’s Signature</span>
             <span class="font" style="relative; display: inline-block; width: 100%; text-align: center; margin-top: -37px;">over Printed Name</span>

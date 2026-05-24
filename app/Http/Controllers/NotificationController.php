@@ -125,6 +125,17 @@ class NotificationController extends Controller
         $offset = intval($request->offset ?? 0);
         $limit = 10;
 
+        $notificationIds = Notification::query()
+            ->where('utype', 'hr')
+            ->orderBy('created_at', 'desc')
+            ->skip($offset)
+            ->take($limit)
+            ->pluck('id');
+
+        if ($notificationIds->isEmpty()) {
+            return response()->json(['html' => '', 'stop' => true]);
+        }
+
         $notifications = Notification::query()
             ->select(
                 'notifications.id',
@@ -134,7 +145,7 @@ class NotificationController extends Controller
                 'notifications.status as notifstat',
                 'notifications.created_at as notif_created_at'
             )
-            ->where('notifications.utype', 'hr')
+            ->whereIn('notifications.id', $notificationIds)
 
             // LEAVE
             ->leftJoin('leave_applications', function ($join) {
@@ -230,13 +241,7 @@ class NotificationController extends Controller
             )
 
             ->orderBy('notifications.created_at', 'desc')
-            ->skip($offset)
-            ->take($limit)
             ->get();
-
-        if ($notifications->isEmpty()) {
-            return response()->json(['html' => '', 'stop' => true]);
-        }
 
         $view = view('partials.notification_items', ['notifications' => $notifications])->render();
 
@@ -260,5 +265,29 @@ class NotificationController extends Controller
         }  
 
         return redirect()->route($menu, $menid);
+    }
+
+    public function markAllAsRead(Request $request)
+    {
+        $guard = $this->getGuard();
+
+        if ($guard === 'web') {
+            Notification::where('utype', 'hr')
+                ->where('status', 0)
+                ->update(['status' => 1]);
+        } elseif ($guard === 'employee') {
+            $employee = auth()->guard('employee')->user();
+
+            Notification::where('utype', 'employee')
+                ->where('empid', $employee->emp_ID)
+                ->where('status', 0)
+                ->update(['status' => 1]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return back();
     }
 }

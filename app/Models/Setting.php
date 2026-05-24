@@ -33,6 +33,7 @@ class Setting extends Model
         // System controls
         'maintenance',
         'system_name',
+        'employee_id_prefix',
         // Theme
         'theme',
         'primary_color',
@@ -42,6 +43,8 @@ class Setting extends Model
         'id_card_primary_color',
         'id_card_accent_color',
         'id_card_logo',
+        'dtr_header',
+        'leave_form_header',
     ];
 
     protected $casts = [
@@ -57,10 +60,66 @@ class Setting extends Model
     {
         return static::firstOrCreate([], [
             'system_name' => 'CPSU HRIS',
+            'employee_id_prefix' => 'EMP',
             'theme'       => 'ea',
             'maintenance' => false,
             'org_name'    => 'EAJ HR Management System',
         ]);
+    }
+
+    public function employeeIdPrefix(): string
+    {
+        $prefix = preg_replace('/[^A-Za-z0-9]/', '', (string) ($this->employee_id_prefix ?? 'EMP'));
+        $prefix = strtoupper($prefix ?: 'EMP');
+
+        return substr($prefix, 0, 20) ?: 'EMP';
+    }
+
+    public function dtrHeaderUrl(): string
+    {
+        return $this->documentHeaderUrl($this->dtr_header, 'Uploads/dtr-header.png');
+    }
+
+    public function dtrHeaderPdfSrc(): string
+    {
+        return $this->documentHeaderPdfSrc($this->dtr_header, 'Uploads/dtr-header.png');
+    }
+
+    public function leaveFormHeaderUrl(): string
+    {
+        return $this->documentHeaderUrl($this->leave_form_header, 'Uploads/leave-header.png');
+    }
+
+    public function leaveFormHeaderPdfSrc(): string
+    {
+        return $this->documentHeaderPdfSrc($this->leave_form_header, 'Uploads/leave-header.png');
+    }
+
+    private function documentHeaderPath(?string $fileName, string $fallback): string
+    {
+        $configured = $fileName ? public_path('Uploads/Settings/' . $fileName) : null;
+
+        if ($configured && file_exists($configured)) {
+            return $configured;
+        }
+
+        return public_path($fallback);
+    }
+
+    private function documentHeaderUrl(?string $fileName, string $fallback): string
+    {
+        $configured = $fileName ? public_path('Uploads/Settings/' . $fileName) : null;
+
+        if ($configured && file_exists($configured)) {
+            return asset('Uploads/Settings/' . $fileName);
+        }
+
+        return asset($fallback);
+    }
+
+    private function documentHeaderPdfSrc(?string $fileName, string $fallback): string
+    {
+        return 'file:///' . str_replace('\\', '/', $this->documentHeaderPath($fileName, $fallback));
     }
 
     /**

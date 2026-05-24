@@ -13,8 +13,11 @@
         background-color: transparent;
     }
 </style>
+@php
+    $isLeaveManagement = ($leaveMode ?? ($guard == 'web' ? 'management' : 'personal')) === 'management';
+@endphp
 
-<section class="content">
+<div class="p-4 sm:p-6">
 <div id="loading-spinner" style="display: none; position: fixed; z-index: 9999; background: rgba(0,0,0,0.5); top: 0; left: 0; width: 100%; height: 100%; text-align: center;">
     <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
         <div class="spinner-border text-light" role="status">
@@ -22,16 +25,27 @@
         </div>
     </div>
 </div>
-    
-<div class="container-fluid">
-    <div class="row">
+
+    @if($isLeaveManagement)
+    <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <h1 class="text-xl font-bold tracking-tight text-foreground">Leave Management</h1>
+            <p class="mt-1 text-xs text-muted-foreground">
+                <i data-lucide="calendar-days" class="mr-1 inline h-3.5 w-3.5 opacity-60"></i>
+                Review selected employee leave application status.
+            </p>
+        </div>
+    </div>
+    @endif
+
+    <div class="grid gap-4 lg:grid-cols-[24rem_minmax(0,1fr)]">
         @include("leaves.side-menu")
-        <div class="col-lg-9">
-            <div class="card card-info card-outline">
-                <div class="card-header">
+        <div class="min-w-0">
+            <div class="overflow-hidden rounded-lg border border-border/60 border-t-4 border-t-primary bg-card shadow-sm">
+                <div class="border-b border-border/60 px-5 py-4">
                     @include("leaves.top-menu")
                 </div>
-                <div class="card-body">
+                <div class="p-5">
                     <div class="tab-content">
                         @php
                             $leaveTypes = [
@@ -498,6 +512,10 @@
         </div>
     </div>
 </div>
+@if($isLeaveManagement)
+    @include("leaves.modal")
+    @include("leaves.credit-modal-scripts")
+@endif
 <div class="modal fade" id="pdfModal" tabindex="-1" role="dialog" aria-labelledby="pdfModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
@@ -507,5 +525,4 @@
         </div>
     </div>
 </div>
-</section>
 @endsection

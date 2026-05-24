@@ -193,6 +193,9 @@ class Controller extends BaseController
 
     public function __construct()
     {   
+        // Notification layout data is prepared once per request in AppServiceProvider.
+        return;
+
         // Count of HR notifications (status 0)
         $notificationsCount = Notification::where('utype', 'hr')
             ->where('status', 0)

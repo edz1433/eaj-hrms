@@ -137,28 +137,23 @@
     </style>
 </head>
 @php
-    $fam_child_string = $datas['familyBg']->name_child ?? '';
-    $fam_child_string_bday = $datas['familyBg']->date_birth ?? '';
-    $children_array = explode(',', $fam_child_string);
-    $children_bday = explode(',', $fam_child_string_bday);
-    $otherinfo_skills_hob_string = $datas['otherinfo']->skills_hob ?? '';
-    $otherinfo_recognition_string = $datas['otherinfo']->recognition ?? '';
-    $otherinfo_mem_org_string = $datas['otherinfo']->mem_org ?? '';
-    $otherinfo_question_string = $datas['infoquestion']->question ?? '';
-    $otherinfo_questiondetail_string = $datas['infoquestion']->qdetails ?? '';
-    $otherinfo_skills_hob = explode(',', $otherinfo_skills_hob_string);
-    $otherinfo_recognition = explode(',', $otherinfo_recognition_string);
-    $otherinfo_mem_org = explode(',', $otherinfo_mem_org_string);
-    $otherinfo_question = explode(',', $otherinfo_question_string);
-    $otherinfo_questiondetail = explode(',', $otherinfo_questiondetail_string);
-    $refname_string = $datas['references']->refname ?? '';
-    $refadd_string = $datas['references']->refadd ?? '';
-    $reftelno_string = $datas['references']->reftelno ?? '';
-    $refname = explode(';', $refname_string);
-    $refadd = explode(';', $refadd_string);
-    $reftelno = explode(';', $reftelno_string);
-    $govid_string = $datas['govids']->govid ?? '';
-    $govids = explode(',', $govid_string);
+    $splitPdsValues = function ($value, $delimiter = ',', $size = 0, $default = '') {
+        $values = array_map('trim', explode($delimiter, (string) ($value ?? '')));
+
+        return $size > 0 ? array_pad($values, $size, $default) : $values;
+    };
+
+    $children_array = $splitPdsValues($datas['familyBg']->name_child ?? '', ',', 12);
+    $children_bday = $splitPdsValues($datas['familyBg']->date_birth ?? '', ',', 12);
+    $otherinfo_skills_hob = $splitPdsValues($datas['otherinfo']->skills_hob ?? '', ',', 3);
+    $otherinfo_recognition = $splitPdsValues($datas['otherinfo']->recognition ?? '', ',', 3);
+    $otherinfo_mem_org = $splitPdsValues($datas['otherinfo']->mem_org ?? '', ',', 3);
+    $otherinfo_question = $splitPdsValues($datas['infoquestion']->question ?? '', ',', 13, '0');
+    $otherinfo_questiondetail = $splitPdsValues($datas['infoquestion']->qdetails ?? $datas['infoquestion']->detail ?? '', ',', 13);
+    $refname = $splitPdsValues($datas['references']->refname ?? '', ';', 3);
+    $refadd = $splitPdsValues($datas['references']->refadd ?? '', ';', 3);
+    $reftelno = $splitPdsValues($datas['references']->reftelno ?? '', ';', 3);
+    $govids = $splitPdsValues($datas['govids']->govid ?? '', ',', 3);
 @endphp
 <body>
     <div class="div">
@@ -166,7 +161,7 @@
             <thead>
                 <tr>
                     <th colspan="9" class="bg1">
-                        <img src="{{ asset('Uploads/pds-header-2025.png') }}" width="100.1%" alt="" srcset="">
+                        <img src="{{ 'file:///' . str_replace('\\', '/', public_path('Uploads/pds-header-2025.png')) }}" width="100.1%" alt="" srcset="">
                     </th>
                 </tr>
             </thead>

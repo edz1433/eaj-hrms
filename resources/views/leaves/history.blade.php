@@ -16,61 +16,55 @@
         vertical-align: middle;
     }
 </style>
-<section class="content">
-<div class="container-fluid">
-    <div class="row">
+@php
+    $isLeaveManagement = ($leaveMode ?? ($guard == 'web' ? 'management' : 'personal')) === 'management';
+@endphp
+<div class="p-4 sm:p-6">
+    @if($isLeaveManagement)
+    <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+            <h1 class="text-xl font-bold tracking-tight text-foreground">Leave Management</h1>
+            <p class="mt-1 text-xs text-muted-foreground">
+                <i data-lucide="calendar-days" class="mr-1 inline h-3.5 w-3.5 opacity-60"></i>
+                Review selected employee leave history.
+            </p>
+        </div>
+    </div>
+    @endif
+
+    <div class="grid gap-4 lg:grid-cols-[24rem_minmax(0,1fr)]">
         @include("leaves.side-menu")
-        <div class="col-lg-9">
-            <div class="card card-info card-outline">
-                <div class="card-header">
+        <div class="min-w-0">
+            <div class="overflow-hidden rounded-lg border border-border/60 border-t-4 border-t-primary bg-card shadow-sm">
+                <div class="border-b border-border/60 px-5 py-4">
                     @include("leaves.top-menu")
                 </div>           
-                <div class="card-body">
+                <div class="p-5">
                     @if($guard == "web")
-                    <div class="row justify-content-end">
-                        <div class="col-md-6"> <!-- HALF WIDTH -->
-
-                            <form action="{{ route('leaveReport') }}" method="POST" target="_blank">
-                                @csrf
-
-                                <div class="row align-items-end mb-3">
-
-                                    <!-- LEFT: Date Range -->
-                                    <div class="col-md-11 mb-0">
-                                        <div class="form-group mb-0">
-                                            <div class="input-group">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text">
-                                                        <i class="far fa-calendar-alt"></i>
-                                                    </span>
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="date"
-                                                    id="dateRange"
-                                                    placeholder="Select date or date range"
-                                                    required
-                                                >
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- RIGHT: Generate Button -->
-                                    <div class="col-md-1">
-                                        <button type="submit" class="btn btn-danger btn-block">
-                                            <i class="fas fa-file-pdf"></i>
-                                        </button>
-                                    </div>
-
-                                </div>
-                            </form>
-
-                        </div>
+                    <div class="mb-4 flex justify-end">
+                        <form action="{{ route('leaveReport') }}" method="POST" target="_blank" class="flex w-full max-w-xl flex-col gap-2 sm:flex-row sm:items-center">
+                            @csrf
+                            <div class="relative flex-1">
+                                <i class="far fa-calendar-alt pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                                <input
+                                    type="text"
+                                    class="w-full rounded-lg border border-border/60 bg-background px-9 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    name="date"
+                                    id="dateRange"
+                                    placeholder="Select date or date range"
+                                    required
+                                >
+                            </div>
+                            <button type="submit" class="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-destructive px-3 text-xs font-semibold text-destructive-foreground shadow-sm transition hover:bg-destructive/90">
+                                <i class="fas fa-file-pdf"></i>
+                                <span>Report</span>
+                            </button>
+                        </form>
                     </div>
                     @endif
                     <div class="tab-content">
-                        <table class="table table-collapsed table-hover" id="leaveHistory">
+                        <div class="overflow-x-auto rounded-lg border border-border/60">
+                        <table class="table table-collapsed table-hover mb-0 min-w-[56rem]" id="leaveHistory">
                             <thead>
                                 <tr>
                                     <th>LEAVE TYPE</th>
@@ -204,12 +198,17 @@
                                 @endforeach
                             </tbody>
                         </table>
+                        </div>
                     </div>                    
                 </div>
             </div>                        
         </div>
     </div>
 </div>
+@if($isLeaveManagement)
+    @include("leaves.modal")
+    @include("leaves.credit-modal-scripts")
+@endif
 <div class="modal fade" id="pdfModal" tabindex="-1" role="dialog" aria-labelledby="pdfModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">

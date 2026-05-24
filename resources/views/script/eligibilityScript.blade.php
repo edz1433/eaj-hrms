@@ -1,110 +1,111 @@
-<script>   
-    $(document).on('click', '.eligible_delete', function(e){
-        var id = $(this).val();
-        var url = "{{ route('eliDelete', ['id' => ':id']) }}";
-        url = url.replace(':id', id);
-        
-        $.ajaxSetup({
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    function routeWithId(template, id) {
+        return template.replace('__ID__', encodeURIComponent(id));
+    }
+
+    function notify(icon, title, text = '') {
+        if (window.Swal) {
+            window.Swal.fire({
+                icon,
+                title,
+                text,
+                timer: icon === 'success' ? 1200 : undefined,
+                showConfirmButton: icon !== 'success',
+            });
+            return;
+        }
+
+        if (window.Toast) {
+            const method = icon === 'error' ? 'error' : 'success';
+            window.Toast[method](title, text);
+            return;
+        }
+
+        alert(text ? `${title}\n${text}` : title);
+    }
+
+    async function postAction(url) {
+        const response = await fetch(url, {
+            method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
             },
         });
-    
-        Swal.fire({
-        title: 'Are you sure?',
-        text: "You won't be able to revert this!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, delete it!'
-        }).then((result) => {
-            if (result.isConfirmed){
-                $.ajax({
-                    type: "POST",
-                    url: url,
-                    success: function (response) {  
-                        $(".eligibility-row.row-" + id).fadeOut(2000);
-                        Swal.fire({
-                        title:'Deleted!',
-                        text:'Your file has been deleted.',
-                        type:'success',
-                        icon: 'warning',
-                        showConfirmButton: false,
-                        timer: 1000
-                        })
-                    }
-                });
-            }
-        })
-    });  
 
-    $(document).on('click', '.eligible_approve', function(e) {
-        var id = $(this).val();
-        var url = "{{ route('eliApprove', ['id' => ':id']) }}";
-        url = url.replace(':id', id);
-        
-        $.ajaxSetup({
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            }
-        });
+        const data = await response.json().catch(() => ({}));
 
-        Swal.fire({
-            title: 'Are you sure?',
-            text: "You want to approve this eligibility!",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Yes, approve!'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    type: "POST",
-                    url: url,
-                    success: function(response) {
-                        Swal.fire({
-                            title: 'Approved!',
-                            text: 'The eligibility has been approved.',
-                            icon: 'success',
-                            showConfirmButton: false,
-                            timer: 1000
-                        });
-                        
-                        $("#status-" + id)
-                        .text("Reviewed") 
-                        .removeClass("badge-warning")
-                        .addClass("badge-success"); 
-                    },
-                    error: function(xhr) {
-                        Swal.fire({
-                            title: 'Error!',
-                            text: 'An error occurred while approving.',
-                            icon: 'error',
-                            showConfirmButton: false,
-                            timer: 2000
-                        });
-                    }
-                });
+        if (!response.ok || data.status >= 400) {
+            throw new Error(data.message || 'The request could not be completed.');
+        }
+
+        return data;
+    }
+
+    document.querySelectorAll('.eligible_delete').forEach((button) => {
+        button.addEventListener('click', async function () {
+            const id = button.value;
+            const url = routeWithId(@json(route('eliDelete', ['id' => '__ID__'])), id);
+
+            const confirmed = window.Swal
+                ? await window.Swal.fire({
+                    title: 'Are you sure?',
+                    text: "You won't be able to revert this.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete it',
+                }).then((result) => result.isConfirmed)
+                : confirm("Delete this eligibility record?");
+
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                await postAction(url);
+                document.querySelector(`.eligibility-row.row-${id}`)?.remove();
+                notify('success', 'Deleted', 'Eligibility record deleted.');
+            } catch (error) {
+                notify('error', 'Delete Failed', error.message);
             }
         });
     });
 
-</script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.querySelector('input[name="table_search"]');
-        const tableRows = document.querySelectorAll('.table tbody');
-    
-        searchInput.addEventListener('input', function() {
-            const searchTerm = searchInput.value.toLowerCase();
-    
-            tableRows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                const found = Array.from(cells).some(cell => cell.textContent.toLowerCase().includes(searchTerm));
-                row.style.display = found ? '' : 'none';
-            });
+    document.querySelectorAll('.eligible_approve').forEach((button) => {
+        button.addEventListener('click', async function () {
+            const id = button.value;
+            const url = routeWithId(@json(route('eliApprove', ['id' => '__ID__'])), id);
+
+            const confirmed = window.Swal
+                ? await window.Swal.fire({
+                    title: 'Approve eligibility?',
+                    text: 'This will mark the record as reviewed.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, approve',
+                }).then((result) => result.isConfirmed)
+                : confirm('Approve this eligibility record?');
+
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                await postAction(url);
+                const status = document.getElementById(`status-${id}`);
+                if (status) {
+                    status.textContent = 'Reviewed';
+                    status.className = 'inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-200 dark:ring-emerald-800/40';
+                }
+                notify('success', 'Approved', 'Eligibility record reviewed.');
+            } catch (error) {
+                notify('error', 'Approve Failed', error.message);
+            }
         });
     });
+});
 </script>

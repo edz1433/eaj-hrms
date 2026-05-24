@@ -10,13 +10,9 @@ use App\Http\Controllers\TirednessController;
 use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\MyAccountController;
-use App\Http\Controllers\DocumentFolderController;
-use App\Http\Controllers\DriveAccountController;
-use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DtrController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\AddressController;
-use App\Http\Controllers\DpipopController;
 use App\Http\Controllers\PdsController;
 use App\Http\Controllers\FamilybgController;
 use App\Http\Controllers\EducBgController;
@@ -33,32 +29,26 @@ use App\Http\Controllers\LeaveApplicationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PendingController;
 use App\Http\Controllers\EventController;
-use App\Http\Controllers\OpcrController;
-use App\Http\Controllers\DpcrController;
-use App\Http\Controllers\IpcrController;
-use App\Http\Controllers\SpmsPersonnelController;
-use App\Http\Controllers\SpmsMfoPercentageController;
 use App\Http\Controllers\PerformanceController;
-use App\Http\Controllers\EvidenceController;
 use App\Http\Controllers\JobHiringController;
 use App\Http\Controllers\ApplicationController;
-use App\Http\Controllers\DeansController;
 use App\Http\Controllers\ModifyController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TimeEntryPageController;
 
 Route::get('/', function () {
     if (Auth::guard('web')->check()) {
         return redirect()->route('dashboard');
     }elseif(Auth::guard('employee')->check()){
-        return redirect()->route('drive');
+        return redirect()->route('empPDS');
     }
     return view('login');
 });
 
 //login
-Route::get('/hr-admin',[LoginAuthController::class,'getLoginAdmin'])->name('getLoginAdmin');
 Route::get('/login',[LoginAuthController::class,'getLogin'])->name('getLogin')->middleware([NoCacheMiddleware::class]);
 Route::post('/login',[LoginAuthController::class,'postLogin'])->name('postLogin');
+Route::get('/time-entry', [TimeEntryPageController::class, 'index'])->name('time-entry.index');
 // Route::get('/update-pass', [EmployeeController::class, 'updateEmployeePasswords']);
 
 Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle'])->name('google.login');
@@ -77,94 +67,6 @@ Route::group(['middleware' => ['login_auth', NoCacheMiddleware::class]], functio
     Route::get('/data-privacy', [MasterController::class, 'dataPrivacy'])->name('dataPrivacy');
     Route::get('/payroll', fn () => redirect('https://hris.cpsu.edu.ph/pms'))->name('payroll');
 
-    // Drive 
-    Route::prefix('spms')->group(function() {
-        Route::get('/', [MasterController::class, 'drive'])->name('drive');
-        Route::get('/{id}', [DocumentFolderController::class, 'subFolder'])->name('sub-folder');
-        Route::post('/create', [DocumentFolderController::class, 'createFolder'])->name('create-folder');
-        Route::post('/update', [DocumentFolderController::class, 'updateFolder'])->name('update-folder');
-        Route::post('/create-sub/{id}', [DocumentFolderController::class, 'createSubFolder'])->name('create-subfolder');
-        Route::get('/delete/{id}', [DocumentFolderController::class, 'deleteFolder'])->name('delete-folder');
-        
-        // Upload File
-        Route::post('/upload/{id}', [DocumentController::class, 'storeFile'])->name('document-store');
-        Route::post('/update-file', [DocumentController::class, 'updateFile'])->name('document-update');
-        Route::get('/delete-file/{id}', [DocumentController::class, 'deleteFile'])->name('delete-file');
-         
-        //performance rating
-        Route::get('/opcr/{cat}/{empid?}/{prnumber}', [DocumentController::class, 'perRatingOpcr'])->name('perRatingOpcr');
-        Route::get('/dpcr/{cat}/{empid?}/{prnumber}', [DocumentController::class, 'perRatingDpcr'])->name('perRatingDpcr');
-        Route::get('/ipcr/{cat}/{empid?}/{prnumber}', [DocumentController::class, 'perRatingIpcr'])->name('perRatingIpcr');
-
-        Route::post('/update-order', [DocumentController::class, 'updateOrder'])->name('updateOrder');
-
-        //Opcr
-        Route::post('/create-opcr', [OpcrController::class, 'createOpcr'])->name('create-opcr');
-        Route::post('/update-opcr-mfo', [OpcrController::class, 'updateOpcrMfo'])->name('update-opcr-mfo');
-        Route::post('/create-opcr-mfo-data', [OpcrController::class, 'createOpcrMfoData'])->name('create-opcr-mfo-data');
-        Route::post('/opcr-data', [OpcrController::class, 'opcrData'])->name('opcrData');
-        Route::get('/opcrmfo-edit-ata/{id}', [OpcrController::class, 'opcrmfoEditData'])->name('opcrmfoEditData');
-        Route::post('/opcrmfo-delete-data/{id}', [OpcrController::class, 'opcrmfoDeleteData'])->name('opcrmfoDeleteData');
-        Route::get('/opcr-pdf/{prnumber}/{userid}/{category}', [OpcrController::class, 'opcrPdf'])->name('opcrPdf');
-        Route::post('/assign-opcr', [OpcrController::class, 'assignOpcr'])->name('assignOpcr');
-        Route::post('/update-rating/{prnumber}', [OpcrController::class, 'updateRatingStatus'])->name('updateRatingStatus');
-        Route::get('/pdf/opcr/{prnumber}/{category}/{userid}', [OpcrController::class, 'generateOpcrPdf'])->name('generateOpcrPdf');
-        
-        Route::post('/update-opcr-stat', [DocumentFolderController::class, 'updateStat'])->name('updateStat');
-    
-        //Dpcr
-        Route::post('/update-dpcr-mfo', [DpcrController::class, 'updateDpcrMfo'])->name('update-dpcr-mfo');
-        Route::post('/create-dpcr-mfo-data', [DpcrController::class, 'createDpcrMfoData'])->name('create-dpcr-mfo-data');
-        Route::post('/dpcr-data', [DpcrController::class, 'dpcrData'])->name('dpcrData');
-        Route::get('/dpcrmfo-edit-data/{id}', [DpcrController::class, 'dpcrmfoEditData'])->name('dpcrmfoEditData');
-        Route::post('/dpcrmfo-delete-data/{id}', [DpcrController::class, 'dpcrmfoDeleteData'])->name('dpcrmfoDeleteData');
-        Route::get('/dpcr-pdf/{prnumber}/{userid}/{category}', [DpcrController::class, 'dpcrPdf'])->name('dpcrPdf');
-        Route::post('/assign-dpcr', [DpcrController::class, 'assignDpcr'])->name('assignDpcr');  
-        Route::get('/pdf/dpcr/{prnumber}/{empid}/{category}', [DpcrController::class, 'generateDpcrPdf'])->name('generateDpcrPdf');
-
-        //Ipcr
-        Route::post('/update-ipcr-mfo', [IpcrController::class, 'updateIpcrMfo'])->name('update-ipcr-mfo');
-        Route::post('/create-ipcr-mfo-data', [IpcrController::class, 'createIpcrMfoData'])->name('create-ipcr-mfo-data');
-        Route::post('/ipcr-data', [IpcrController::class, 'ipcrData'])->name('ipcrData');
-        Route::get('/ipcrmfo-edit-data/{id}', [IpcrController::class, 'ipcrmfoEditData'])->name('ipcrmfoEditData');
-        Route::post('/ipcrmfo-delete-data/{id}', [IpcrController::class, 'ipcrmfoDeleteData'])->name('ipcrmfoDeleteData');
-        Route::get('/ipcr-pdf/{prnumber}/{userid}/{category}', [IpcrController::class, 'ipcrPdf'])->name('ipcrPdf');
-        Route::get('/pdf/ipcr/{prnumber}/{empid}/{category}', [IpcrController::class, 'generateIpcrPdf'])->name('generateIpcrPdf');
-
-        Route::post('/update-comment-status', [DpcrController::class, 'markAsRead'])->name('markAsRead');
-        //Evidence
-        Route::post('/upload-evidence', [EvidenceController::class, 'uploadEvidence'])->name('uploadEvidence');
-
-        //Asignatories
-        Route::post('/update-asignatories', [DocumentController::class, 'updateAsignatories'])->name('updateAsignatories');
-    });
-
-    Route::prefix('spms-set')->group(function() {
-        //PR PMT
-        Route::get('/{cat}', [SpmsPersonnelController::class, 'spmsPersonnlist'])->name('spmsPersonnlist');
-        Route::post('/create', [SpmsPersonnelController::class, 'spmsPersonnCreate'])->name('spmsPersonnCreate');
-        Route::get('/{cat}/{id}', [SpmsPersonnelController::class, 'spmsPersonnEdit'])->name('spmsPersonnEdit');
-        Route::post('/update', [SpmsPersonnelController::class, 'spmsPersonnUpdate'])->name('spmsPersonnUpdate');
-        Route::post('/delete', [SpmsPersonnelController::class, 'spmsPersonnDelete'])->name('spmsPersonnDelete');
-    });
-
-    //DEANS
-    Route::prefix('deans')->group(function() {
-        Route::get('/', [DeansController::class, 'deanlist'])->name('deanlist');
-        Route::post('/create', [DeansController::class, 'deanCreate'])->name('deanCreate');
-        Route::get('/edit/{id}', [DeansController::class, 'deanEdit'])->name('deanEdit');
-        Route::post('/update', [DeansController::class, 'deanUpdate'])->name('deanUpdate');
-        Route::post('/delete', [DeansController::class, 'deanDelete'])->name('deanDelete');
-    });
-
-    //PR SETTINGS
-    Route::prefix('spms-mfo-settings')->group(function() {
-        Route::get('/', [SpmsMfoPercentageController::class, 'mfoSettings'])->name('mfoSettings');
-        Route::post('/mfo-setting-create', [SpmsMfoPercentageController::class, 'mfoSettingsCreate'])->name('mfoSettingsCreate');
-        Route::get('/mfo-setting-edit/{id}', [SpmsMfoPercentageController::class, 'mfoSettingsEdit'])->name('mfoSettingsEdit');
-        Route::post('/mfo-setting-update', [SpmsMfoPercentageController::class, 'mfoSettingsUpdate'])->name('mfoSettingsUpdate');
-    });
-
     // DTR
     Route::prefix('dtr')->group(function() {
         Route::get('/', [DtrController::class, 'dtrRead'])->name('dtr-read');
@@ -174,12 +76,6 @@ Route::group(['middleware' => ['login_auth', NoCacheMiddleware::class]], functio
         Route::get('/dtr-log-pdf/{employeeId}/{dateFrom}/{dateTo}/{overtime?}', [DtrController::class, 'logDtrView'])->name('logDtrView');
         Route::get('/pdf', [DtrController::class, 'dtrPdf'])->name('dtr-pdf');
     });
-    //DPIPOP
-    
-    Route::prefix('pr-form')->group(function() {
-        Route::post('/get-formdata', [DpipopController::class, 'getFormData'])->name('getFormData');
-    });
-
     // User
     Route::prefix('user')->group(function() {
         Route::get('/', [UserController::class, 'ulist'])->name('ulist');
@@ -247,7 +143,7 @@ Route::group(['middleware' => ['login_auth', NoCacheMiddleware::class]], functio
         Route::get('/attachment/{id?}', [PdsController::class, 'genpdsAtthachment'])->name('genpdsAtthachment');
         
         //personal Info
-        Route::get('personal-info/{id}', [EmployeeController::class, 'PDS'])->name('PDS');   
+        Route::get('personal-info/{id?}', [EmployeeController::class, 'PDS'])->name('PDS');   
 
         //family background
         Route::get('/family-bg/{id?}', [FamilybgController::class, 'familybg'])->name('familybg');
@@ -370,7 +266,13 @@ Route::group(['middleware' => ['login_auth', NoCacheMiddleware::class]], functio
     Route::prefix('notification')->group(function() {
         // Route::get('/load/{page}', [NotificationController::class, 'loadMore'])->name('notificationload');
         Route::get('/load', [NotificationController::class, 'loadMore'])->name('notificationload');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllRead');
         Route::get('/update-notif/{menid}/{lappid}/{menu}', [NotificationController::class, 'updateNotif'])->name('updateNotif');
+    });
+
+    Route::prefix('time-entry')->name('time-entry.')->group(function() {
+        Route::get('/register', [TimeEntryPageController::class, 'register'])->middleware('face_registration')->name('register');
+        Route::get('/logs', [TimeEntryPageController::class, 'logs'])->middleware('face_registration')->name('logs');
     });
 
     // leave

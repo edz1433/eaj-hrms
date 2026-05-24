@@ -15,7 +15,7 @@
 
         <div class="flex items-center gap-3">
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 dark:bg-sky-900/30">
-                <i class="fas fa-briefcase text-sky-600 dark:text-sky-400 text-sm"></i>
+                <i data-lucide="briefcase-business" class="h-4 w-4 text-sky-600 dark:text-sky-400"></i>
             </div>
             <div>
                 <h1 class="text-base font-bold text-foreground">Work Experience</h1>
@@ -27,14 +27,14 @@
         <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
             <div class="flex items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3">
                 <div class="flex items-center gap-2">
-                    <i class="fas fa-plus-circle text-sky-500 text-xs opacity-80"></i>
+                    <i data-lucide="circle-plus" class="h-3.5 w-3.5 text-sky-500 opacity-80"></i>
                     <span class="text-xs font-bold uppercase tracking-wide text-foreground">
                         {{ isset($workexperienceedit) ? 'Edit Entry' : 'Add Work Experience' }}
                     </span>
                 </div>
                 <button type="button" onclick="toggleForm()"
                     class="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground hover:bg-muted transition-colors">
-                    <i id="form-toggle-icon" class="fas fa-chevron-{{ $formOpen ? 'up' : 'down' }} text-[9px] transition-transform"></i>
+                    <i id="form-toggle-icon" data-lucide="chevron-{{ $formOpen ? 'up' : 'down' }}" class="h-3 w-3 transition-transform"></i>
                     <span id="form-toggle-label">{{ $formOpen ? 'Hide Form' : 'Show Form' }}</span>
                 </button>
             </div>
@@ -126,7 +126,7 @@
                     <div class="mt-4 flex justify-end">
                         <button type="submit" name="btn-submit"
                             class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary/90 transition-colors">
-                            <i class="fas fa-save"></i>
+                            <i data-lucide="save" class="h-3.5 w-3.5"></i>
                             {{ isset($workexperienceedit) ? 'Update' : 'Submit' }}
                         </button>
                     </div>
@@ -137,13 +137,54 @@
         {{-- Records --}}
         @if(count($workexperience) > 0)
         <div class="space-y-3">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-1">
+            <p data-pds-record-count class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-1">
                 {{ count($workexperience) }} {{ Str::plural('Record', count($workexperience)) }}
             </p>
             @foreach($workexperience as $work)
-            <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm workexperience-row row-{{ $work->id }}">
-                <div class="flex items-start justify-between gap-4 px-5 py-4 border-b border-border/40">
+            @php
+                $workTitle = trim((string) $work->position) ?: 'Untitled Position';
+                $workDept = trim((string) $work->department) ?: 'Department not specified';
+                $workFrom = $work->inc_date1 ? \Carbon\Carbon::parse($work->inc_date1)->format('M d, Y') : 'No start date';
+                $workTo = $work->inc_date2 ? \Carbon\Carbon::parse($work->inc_date2)->format('M d, Y') : 'Present';
+                $workSalary = trim((string) $work->salary) ?: 'Not specified';
+                $workGrade = trim((string) $work->sg_grade) ?: 'Not specified';
+                $workStatus = trim((string) $work->stat_app) ?: 'Not specified';
+                $workService = $work->service === 'Y' ? 'Yes' : ($work->service === 'N' ? 'No' : 'Not specified');
+            @endphp
+            <div class="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition hover:border-primary/25 hover:shadow-md workexperience-row row-{{ $work->id }}">
+                <div class="flex flex-col gap-4 px-5 py-4 border-b border-border/40 md:flex-row md:items-start md:justify-between">
                     <div class="flex-1 min-w-0">
+                        <div class="flex items-start gap-3">
+                            <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300">
+                                <i data-lucide="briefcase-business" class="h-4 w-4"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold leading-snug text-foreground">{{ $workTitle }}</p>
+                                <p class="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                    <i data-lucide="building-2" class="h-3 w-3 shrink-0"></i>
+                                    <span class="truncate">{{ $workDept }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            <div class="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 sm:col-span-2">
+                                <p class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"><i data-lucide="calendar-days" class="h-3 w-3"></i> Inclusive Dates</p>
+                                <p class="mt-1 text-xs font-semibold text-foreground">{{ $workFrom }} - {{ $workTo }}</p>
+                            </div>
+                            <div class="rounded-xl border border-border/60 bg-muted/20 px-3 py-2">
+                                <p class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"><i data-lucide="wallet" class="h-3 w-3"></i> Salary</p>
+                                <p class="mt-1 truncate text-xs font-semibold text-foreground">{{ $workSalary }}</p>
+                            </div>
+                            <div class="rounded-xl border border-border/60 bg-muted/20 px-3 py-2">
+                                <p class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"><i data-lucide="landmark" class="h-3 w-3"></i> Gov't Service</p>
+                                <p class="mt-1 text-xs font-semibold text-foreground">{{ $workService }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <span class="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-background px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">SG/Step <span class="text-foreground">{{ $workGrade }}</span></span>
+                            <span class="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-background px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">Appointment <span class="text-foreground">{{ $workStatus }}</span></span>
+                        </div>
+                        <div class="hidden">
                         <p class="text-xs font-bold text-foreground">{{ $work->position }}</p>
                         <p class="text-[11px] text-muted-foreground">{{ $work->department }}</p>
                         <div class="mt-1 text-[10px] text-muted-foreground">
@@ -156,8 +197,9 @@
                                 @endif
                             </span>
                         </div>
+                        </div>
                     </div>
-                    <div class="shrink-0">
+                    <div class="shrink-0 md:pt-1">
                         @if($work->status == 0)
                             <span id="status-{{ $work->id }}"
                                 class="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-800/40">
@@ -175,56 +217,52 @@
                     </div>
                 </div>
                 <div class="px-5 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
-                    @if($work->sg_grade)<span>SG/Step: <span class="font-semibold text-foreground">{{ $work->sg_grade }}</span></span>@endif
-                    @if($work->salary)<span>Salary: <span class="font-semibold text-foreground">{{ $work->salary }}</span></span>@endif
-                    @if($work->stat_app)<span>Status: <span class="font-semibold text-foreground">{{ $work->stat_app }}</span></span>@endif
-                    <span>Gov't Service: <span class="font-semibold text-foreground">{{ $work->service == 'Y' ? 'Yes' : 'No' }}</span></span>
                     @if(!empty($work->attachment))
                         <a href="#" data-label="{{ $work->position }}"
                            data-pdf="{{ asset('storage/' . $work->attachment) }}"
                            onclick="showPdfModal(this); return false;"
                            class="inline-flex items-center gap-1 text-primary hover:underline font-semibold">
-                            <i class="fas fa-eye text-[9px]"></i> Preview PDF
+                            <i data-lucide="eye" class="h-3 w-3"></i> Preview PDF
                         </a>
                     @endif
                     @if($work->status == 2 && $work->remarks)
                         <span class="text-red-500">Remarks: {{ $work->remarks }}</span>
                     @endif
 
-                    <div class="ml-auto flex items-center gap-1.5">
+                    <div data-pds-actions class="ml-auto flex items-center gap-1.5">
                         @if($guard == 'web')
-                            <a href="{{ route('workexperienceEdit', ['id' => $empid, 'eid' => $work->id]) }}"
+                            <a href="{{ route('workexperienceEdit', ['id' => shortEncrypt((string) $employee->id), 'eid' => $work->id]) }}"
                                class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200/60 dark:bg-amber-950/30 transition-colors" title="Edit">
-                                <i class="fas fa-pen text-[10px]"></i>
+                                <i data-lucide="pencil" class="h-3 w-3"></i>
                             </a>
-                            <button class="workexperience_approve flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200/60 dark:bg-emerald-950/30 transition-colors"
+                            <button data-pds-hide-on-approve class="workexperience_approve flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200/60 dark:bg-emerald-950/30 transition-colors"
                                 value="{{ $work->id }}" title="Approve">
-                                <i class="fas fa-check text-[10px]"></i>
+                                <i data-lucide="check" class="h-3 w-3"></i>
                             </button>
                             @if($work->status == 0)
-                                <button onclick="openCancelModal({{ $work->id }})"
+                                <button data-pds-hide-on-approve onclick="openCancelModal({{ $work->id }})"
                                     class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200/60 dark:bg-amber-950/30 transition-colors" title="Cancel">
-                                    <i class="fas fa-times text-[10px]"></i>
+                                    <i data-lucide="x" class="h-3 w-3"></i>
                                 </button>
                             @endif
                             <button class="workexperience_delete flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 border border-red-200/60 dark:bg-red-950/30 transition-colors"
                                 value="{{ $work->id }}" title="Delete">
-                                <i class="fas fa-trash text-[10px]"></i>
+                                <i data-lucide="trash-2" class="h-3 w-3"></i>
                             </button>
                         @elseif($guard == 'employee')
                             @if($work->status == 0)
-                            <a href="{{ route('workexperienceEdit', ['id' => $empid, 'eid' => $work->id]) }}"
+                            <a href="{{ route('workexperienceEdit', ['id' => shortEncrypt((string) $employee->id), 'eid' => $work->id]) }}"
                                class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200/60 dark:bg-amber-950/30 transition-colors" title="Edit">
-                                <i class="fas fa-pen text-[10px]"></i>
+                                <i data-lucide="pencil" class="h-3 w-3"></i>
                             </a>
                             <button class="workexperience_delete flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 border border-red-200/60 dark:bg-red-950/30 transition-colors"
                                 value="{{ $work->id }}" title="Delete">
-                                <i class="fas fa-trash text-[10px]"></i>
+                                <i data-lucide="trash-2" class="h-3 w-3"></i>
                             </button>
                             @else
-                            <a href="{{ route('workexperienceEdit', ['id' => $empid, 'eid' => $work->id]) }}"
+                            <a href="{{ route('workexperienceEdit', ['id' => shortEncrypt((string) $employee->id), 'eid' => $work->id]) }}"
                                class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200/60 dark:bg-amber-950/30 transition-colors" title="Edit">
-                                <i class="fas fa-pen text-[10px]"></i>
+                                <i data-lucide="pencil" class="h-3 w-3"></i>
                             </a>
                             @endif
                         @endif
@@ -235,7 +273,7 @@
         </div>
         @else
         <div class="rounded-2xl border border-dashed border-border/60 bg-muted/20 py-10 text-center">
-            <i class="fas fa-briefcase text-3xl text-muted-foreground/30 mb-2"></i>
+            <i data-lucide="briefcase-business" class="mx-auto mb-2 h-8 w-8 text-muted-foreground/30"></i>
             <p class="text-xs text-muted-foreground">No work experience records yet.</p>
         </div>
         @endif
@@ -250,7 +288,7 @@
         <div class="flex items-center justify-between border-b border-border/60 px-5 py-4">
             <h3 class="text-sm font-semibold text-foreground" id="pdfModalLabel"></h3>
             <button onclick="closePdfModal()" class="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors">
-                <i class="fas fa-times text-xs"></i>
+                <i data-lucide="x" class="h-3.5 w-3.5"></i>
             </button>
         </div>
         <div class="p-4">
@@ -263,12 +301,12 @@
 <div id="cancel-modal-backdrop" class="fixed inset-0 z-[60] hidden items-center justify-center p-4" aria-modal="true" role="dialog">
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeCancelModal()"></div>
     <div class="relative w-full max-w-sm rounded-2xl border border-border/60 bg-card shadow-2xl overflow-hidden">
-        <form method="POST" action="{{ route('workexperienceCancel') }}">
+        <form method="POST" action="{{ route('workexperienceCancel') }}" data-pds-cancel-form>
             @csrf
             <div class="flex items-center justify-between border-b border-border/60 px-5 py-4">
                 <h3 class="text-sm font-semibold text-foreground">Cancel Entry</h3>
                 <button type="button" onclick="closeCancelModal()" class="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors">
-                    <i class="fas fa-times text-xs"></i>
+                    <i data-lucide="x" class="h-3.5 w-3.5"></i>
                 </button>
             </div>
             <div class="p-5 space-y-3">
@@ -295,6 +333,15 @@
 </div>
 
 @push('scripts')
+@include('script.pdsRecordActions', ['config' => [
+    'label' => 'Work Experience',
+    'deleteSelector' => '.workexperience_delete',
+    'approveSelector' => '.workexperience_approve',
+    'rowSelector' => '.workexperience-row',
+    'countSelector' => '[data-pds-record-count]',
+    'deleteRoute' => route('workDelete', ['id' => '__ID__']),
+    'approveRoute' => route('expApprove', ['id' => '__ID__']),
+]])
 <script>
 function toggleForm() {
     const s = document.getElementById('form-section');

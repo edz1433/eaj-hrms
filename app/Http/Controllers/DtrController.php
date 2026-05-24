@@ -119,27 +119,36 @@ class DtrController extends Controller
                 $startDate = Carbon::createFromDate($year, $month, 1);
                 $endDate = Carbon::createFromDate($year, $month)->endOfMonth();
                 break;
+            default:
+                abort(422, 'Invalid DTR period.');
         }
     
         $employee = Employee::where('employees.emp_ID', $employeeId)
-        ->leftjoin('campuses', 'employees.camp_id', '=', 'campuses.id')
-        ->leftjoin('dbcpsupms.offices', 'employees.emp_dept', '=', 'dbcpsupms.offices.id')
-        ->select(
-            'employees.*',
-            'campuses.campus_name',
-            'dbcpsupms.offices.office_name'
-        )
-        ->first();
+            ->leftJoin('camp_branches', 'employees.camp_id', '=', 'camp_branches.id')
+            ->leftJoin('offices', 'employees.emp_dept', '=', 'offices.id')
+            ->select(
+                'employees.*',
+                'camp_branches.name as campus_name',
+                'offices.office_name'
+            )
+            ->first();
 
-        $supervisor = Employee::where('id', $employee->supervisor)
-        ->select('employees.fname', 'employees.lname', 'employees.mname', 'employees.prefix')
-        ->first();
+        if (!$employee) {
+            abort(404, 'Employee not found.');
+        }
+
+        $supervisor = $employee->supervisor
+            ? Employee::where('id', $employee->supervisor)
+                ->select('employees.fname', 'employees.lname', 'employees.mname', 'employees.prefix', 'employees.suffix')
+                ->first()
+            : null;
         
         $dtrRecords = Dtr::where('emp_ID', $employeeId)
                         ->whereYear('date', $year)
                         ->whereMonth('date', $month)
                         ->get();
-        $offtime = OfficialTime::where('empid', '=', $employeeId)->first();
+        $offtime = OfficialTime::forEmployee($employeeId);
+        $dtrHeaderSrc = Setting::singleton()->dtrHeaderPdfSrc();
 
         // dd($offtime);
         
@@ -155,6 +164,7 @@ class DtrController extends Controller
             'endDate' => $endDate->format('j'),
             'year' => $year, 
             'offtime' => $offtime,
+            'dtrHeaderSrc' => $dtrHeaderSrc,
         ])->setPaper('Legal', 'portrait');
     
         return $pdf->stream();

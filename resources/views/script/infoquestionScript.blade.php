@@ -1,69 +1,90 @@
 <script>
-    $(document).ready(function() {
-        $('input[type=radio]').on('change', function() {
-            const index = $(this).attr('name').match(/\d+/)[0];
+document.addEventListener('DOMContentLoaded', () => {
+    const empid = @json($empid);
+    const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const timers = new Map();
 
-            if ($(this).val() === '1') {
-                $(`#details-${index}`).prop('readonly', false).val('');
-                $(`#details-${index}`).parent().show();
-            } else {
-                $(`#details-${index}`).prop('readonly', true).val('');
-                $(`#details-${index}`).parent().hide();
-            }
-        });
+    function sanitize(field) {
+        if (!field.classList.contains('input-details')) return;
+        field.value = String(field.value || '').replace(/,/g, '');
+    }
 
-        $('input[type=radio]:checked').each(function() {
-            const index = $(this).attr('name').match(/\d+/)[0];
-            if ($(this).val() === '1') {
-                $(`#details-${index}`).prop('readonly', false).parent().show();
-            } else {
-                $(`#details-${index}`).prop('readonly', true).val('').parent().hide();
-            }
-        });
-    });
-</script>
-<script>
-    $.ajaxSetup({
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        }
-    });
+    async function autosave(field, force = false) {
+        if (!field.name || (field.disabled && !force)) return;
 
-    $(document).ready(function() {
-        var empid = {{ $empid }};
-        
-        $('.updated-data').on('change', function() {
-            var column = $(this).attr('name');
-            var index = $(this).data('array');
-            var value = $(this).val();
+        sanitize(field);
 
-            $.ajax({
-                url: '{{ route("update.info.question") }}',
-                type: 'POST',
-                data: {
+        try {
+            const response = await fetch('{{ route("update.info.question") }}', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
                     empid: empid,
-                    column: column,
-                    index: index,
-                    value: value
-                },
-                success: function(response) {
-                    if (response.success) {
-                        //console.log('Update successful!');
-                    } else {
-                        console.log('Update failed!');
+                    column: field.name,
+                    index: field.dataset.array,
+                    value: field.value,
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Unable to save.');
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function queueSave(field, delay = 500, force = false) {
+        const key = `${field.name}-${field.dataset.array || ''}`;
+        window.clearTimeout(timers.get(key));
+        timers.set(key, window.setTimeout(() => autosave(field, force), delay));
+    }
+
+    function setQuestionDetails(index, yesSelected, saveCleared = false) {
+        document.querySelectorAll(`[data-detail-for="${index}"]`).forEach(wrapper => {
+            wrapper.classList.toggle('hidden', !yesSelected);
+            wrapper.classList.toggle('flex', yesSelected);
+
+            wrapper.querySelectorAll('input, textarea, select').forEach(input => {
+                input.disabled = !yesSelected;
+                input.readOnly = !yesSelected;
+
+                if (!yesSelected) {
+                    input.value = '';
+                    if (saveCleared) {
+                        queueSave(input, 0, true);
                     }
-                },
-                error: function(xhr) {
-                    console.log('Error:', xhr.responseText);
                 }
             });
         });
+    }
+
+    document.querySelectorAll('input[type="radio"][name^="question_"]:checked').forEach(radio => {
+        setQuestionDetails(radio.dataset.array, radio.value === '1', false);
     });
-</script>
-<script>
-    document.querySelectorAll('.input-details').forEach(input => {
-        input.addEventListener('input', function() {
-            this.value = this.value.replace(/,/g, '');
+
+    document.querySelectorAll('input[type="radio"][name^="question_"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const yesSelected = radio.value === '1';
+            setQuestionDetails(radio.dataset.array, yesSelected, true);
+            queueSave(radio, 0);
         });
     });
+
+    document.querySelectorAll('.input-details').forEach(field => {
+        field.addEventListener('input', () => {
+            sanitize(field);
+            queueSave(field);
+        });
+
+        field.addEventListener('change', () => queueSave(field, 0));
+        field.addEventListener('blur', () => queueSave(field, 0));
+    });
+});
 </script>

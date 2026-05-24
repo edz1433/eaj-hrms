@@ -83,7 +83,7 @@
     </style>
 </head>
 <body style="margin-top: -10px">
-    <img src="{{ asset('Uploads/leave-header.png') }}" style="width: 100%; margin-bottom: 8px;">
+    <img src="{{ $leaveFormHeaderSrc ?? ('file:///' . str_replace('\\', '/', public_path('Uploads/leave-header.png'))) }}" style="width: 100%; margin-bottom: 8px;">
 
     {{-- 
     <img src="{{ $leaveApplication->president_esign }}" class="signature" alt="Floating image" style="position: fixed; top: 83.7%; left: 45%; transform: translate(-50%, -50%); width: 350px; z-index: 9999;"> --}}

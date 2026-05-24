@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Event;
-use App\Models\Campus;
+use App\Models\CampBranch;
 use App\Models\Status;
 use App\Models\Employee;
 use App\Models\EventLog;
@@ -23,7 +23,7 @@ class EventController extends Controller
     
     public function eventIndex(){
         $guard = $this->getGuard();
-        $campus = Campus::all();
+        $campus = CampBranch::select('id', 'name as campus_name')->orderBy('name')->get();
         $status = Status::all();
         return view("events.event-read", compact('guard', 'campus', 'status'));
     }
@@ -91,7 +91,7 @@ class EventController extends Controller
     public function showReport(){
         $guard = $this->getGuard();
         $events = Event::all();
-        $campus = Campus::all();
+        $campus = CampBranch::select('id', 'name as campus_name')->orderBy('name')->get();
         $status = Status::all();
 
         return view("events.report", compact('guard', 'events', 'campus', 'status'));
@@ -106,7 +106,7 @@ class EventController extends Controller
 
         $guard = $this->getGuard();
         $events = Event::all();
-        $campus = Campus::all();
+        $campus = CampBranch::select('id', 'name as campus_name')->orderBy('name')->get();
         $status = Status::all();
 
         $eventid = $request->input('eventid');
@@ -126,7 +126,7 @@ class EventController extends Controller
         $eventsdatas = Event::find($eventid);
     
         $events = EventLog::join('employees', 'event_logs.empid', '=', 'employees.emp_ID')
-        ->join('campuses', 'employees.camp_id', '=', 'campuses.id')
+        ->leftJoin('camp_branches', 'employees.camp_id', '=', 'camp_branches.id')
         ->when($eventid, function ($query) use ($eventid) {
             return $query->where('event_logs.event_id', $eventid);
         })
@@ -151,7 +151,7 @@ class EventController extends Controller
             'employees.suffix',
             'employees.position',
             'employees.emp_status',
-            'campuses.campus_name',
+            'camp_branches.name as campus_name',
             'event_logs.updated_at',
             'event_logs.in',
             'event_logs.out'

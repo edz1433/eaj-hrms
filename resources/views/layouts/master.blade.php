@@ -41,61 +41,6 @@
     <title>{{ $appTitle }}{{ $pageTitle ? ' - ' . $pageTitle : '' }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
-        window.tailwind = window.tailwind || {};
-        window.tailwind.config = {
-                darkMode: 'class',
-                theme: {
-                    extend: {
-                        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
-                        colors: {
-                            background: 'hsl(var(--background) / <alpha-value>)',
-                            foreground: 'hsl(var(--foreground) / <alpha-value>)',
-                            card: 'hsl(var(--card) / <alpha-value>)',
-                            'card-foreground': 'hsl(var(--card-foreground) / <alpha-value>)',
-                            popover: 'hsl(var(--popover) / <alpha-value>)',
-                            'popover-foreground': 'hsl(var(--popover-foreground) / <alpha-value>)',
-                            primary: 'hsl(var(--primary) / <alpha-value>)',
-                            'primary-foreground': 'hsl(var(--primary-foreground) / <alpha-value>)',
-                            secondary: 'hsl(var(--secondary) / <alpha-value>)',
-                            'secondary-foreground': 'hsl(var(--secondary-foreground) / <alpha-value>)',
-                            muted: 'hsl(var(--muted) / <alpha-value>)',
-                            'muted-foreground': 'hsl(var(--muted-foreground) / <alpha-value>)',
-                            accent: 'hsl(var(--accent) / <alpha-value>)',
-                            'accent-foreground': 'hsl(var(--accent-foreground) / <alpha-value>)',
-                            destructive: 'hsl(var(--destructive) / <alpha-value>)',
-                            'destructive-foreground': 'hsl(var(--destructive-foreground) / <alpha-value>)',
-                            border: 'hsl(var(--border) / <alpha-value>)',
-                            input: 'hsl(var(--input) / <alpha-value>)',
-                            ring: 'hsl(var(--ring) / <alpha-value>)',
-                            sidebar: 'hsl(var(--sidebar) / <alpha-value>)',
-                            'sidebar-foreground': 'hsl(var(--sidebar-foreground) / <alpha-value>)',
-                            'sidebar-primary': 'hsl(var(--sidebar-primary) / <alpha-value>)',
-                            'sidebar-primary-foreground': 'hsl(var(--sidebar-primary-foreground) / <alpha-value>)',
-                            'sidebar-accent': 'hsl(var(--sidebar-accent) / <alpha-value>)',
-                            'sidebar-accent-foreground': 'hsl(var(--sidebar-accent-foreground) / <alpha-value>)',
-                            'sidebar-border': 'hsl(var(--sidebar-border) / <alpha-value>)',
-                        },
-                        keyframes: {
-                            'sidebar-pop': {
-                                '0%': { transform: 'scale(.96)', opacity: '.65' },
-                                '100%': { transform: 'scale(1)', opacity: '1' },
-                            },
-                            'soft-slide': {
-                                '0%': { transform: 'translateX(-6px)', opacity: '.6' },
-                                '100%': { transform: 'translateX(0)', opacity: '1' },
-                            },
-                        },
-                        animation: {
-                            'sidebar-pop': 'sidebar-pop 180ms cubic-bezier(0.16, 1, 0.3, 1)',
-                            'soft-slide': 'soft-slide 180ms cubic-bezier(0.16, 1, 0.3, 1)',
-                        },
-                    },
-                },
-        };
-    </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <script>
         (function () {
             var savedTheme = '{{ $resolvedTheme }}';
             var uiVersion = 'tailwind-cdn-theme-v3';
@@ -232,6 +177,56 @@
                 $hasActiveChild = fn($children) => collect($children)->contains(fn($_, $ck) => $isActive($ck));
             @endphp
 
+            @if($guard === 'employee')
+                @php
+                    $employeeStatusName = strtolower((string) optional(\App\Models\Status::find($authUser->emp_status ?? null))->status_name);
+                    $isRegularEmployee = $employeeStatusName === 'regular';
+                    $employeeNavItems = [
+                        [
+                            'label' => 'Dashboard',
+                            'icon' => 'layout-dashboard',
+                            'url' => route('dashboard'),
+                            'active' => request()->routeIs('dashboard'),
+                        ],
+                        [
+                            'label' => 'DTR',
+                            'icon' => 'clock',
+                            'url' => route('dtr-read'),
+                            'active' => request()->routeIs('dtr-read', 'dtrSearch', 'dtr-pdf'),
+                        ],
+                        [
+                            'label' => 'PDS',
+                            'icon' => 'file-text',
+                            'url' => route('empPDS'),
+                            'active' => request()->routeIs('empPDS', 'PDS', 'familybg', 'educbg', 'eligibility*', 'work-experience*', 'voluntary-work*', 'learning-dev*', 'otherInfo', 'infoQuestion', 'references', 'govids', 'signature'),
+                        ],
+                        [
+                            'label' => 'Payslip',
+                            'icon' => 'receipt',
+                            'url' => route('payroll'),
+                            'active' => request()->routeIs('payroll'),
+                        ],
+                    ];
+
+                    if ($isRegularEmployee) {
+                        array_splice($employeeNavItems, 2, 0, [[
+                            'label' => 'Leave Management',
+                            'icon' => 'file-pen-line',
+                            'url' => route('leavesReadEmp'),
+                            'active' => request()->routeIs('leavesReadEmp', 'leaveStatus', 'historyRead', 'previewLeave'),
+                        ]]);
+                    }
+                @endphp
+
+                @foreach($employeeNavItems as $item)
+                    <a href="{{ $item['url'] }}" class="group flex min-h-10 items-center justify-between gap-3 rounded-xl px-3 text-sm font-medium text-sidebar-foreground/80 no-underline transition-all duration-200 ease-out hover:translate-x-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40 active:scale-[0.99] {{ $item['active'] ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm' : '' }}">
+                        <div class="flex items-center gap-3" :class="{ 'justify-center w-full': sidebarCollapsed && !isMobile }">
+                            <i data-lucide="{{ $item['icon'] }}" class="h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 group-hover:rotate-3"></i>
+                            <span x-show="!sidebarCollapsed || isMobile" x-transition class="flex-1 truncate text-left transition-transform duration-200 group-hover:translate-x-0.5">{{ $item['label'] }}</span>
+                        </div>
+                    </a>
+                @endforeach
+            @else
             @foreach(MenuHelper::all() as $key => $item)
                 @php
                     $children = $item['children'] ?? [];
@@ -277,6 +272,7 @@
                     @endif
                 @endif
             @endforeach
+            @endif
         </nav>
 
         {{-- User Profile Footer (Static at bottom) --}}
@@ -372,19 +368,122 @@
             </div>
 
             {{-- NOTIFICATIONS DROPDOWN --}}
-            @php $unreadCount = $notificationsCount ?? 0; @endphp
+            @php
+                $notificationItems = $guard === 'employee'
+                    ? collect($notifications1 ?? [])
+                    : collect($notifications ?? []);
+                $unreadCountValue = $guard === 'employee'
+                    ? ($notificationsCount1 ?? 0)
+                    : ($notificationsCount ?? 0);
+                $unreadCount = is_countable($unreadCountValue)
+                    ? count($unreadCountValue)
+                    : (int) $unreadCountValue;
+
+                $notificationTitle = function ($notif) {
+                    if (($notif->module ?? '') === 'leave') {
+                        $leaveType = $notif->leave_type ? ' leave' : '';
+                        return ($notif->category == 1 ? 'Leave application submitted' : 'Leave application update') . $leaveType;
+                    }
+
+                    if (($notif->module ?? '') === 'pds') {
+                        return match ((string) $notif->category) {
+                            '1' => 'New eligibility submitted',
+                            '2' => 'New work experience submitted',
+                            '3' => 'New voluntary work submitted',
+                            '4' => 'New learning development submitted',
+                            default => 'PDS notification',
+                        };
+                    }
+
+                    return ucwords(str_replace(['_', '-'], ' ', (string) ($notif->module ?? 'Notification')));
+                };
+
+                $notificationName = function ($notif) use ($guard) {
+                    if ($guard === 'employee') {
+                        return 'HR Office';
+                    }
+
+                    return $notif->leave_emp_fullname
+                        ?? $notif->pds_emp_eligi_fullname
+                        ?? $notif->pds_emp_workexp_fullname
+                        ?? $notif->pds_emp_volworks_fullname
+                        ?? $notif->pds_emp_learndev_fullname
+                        ?? 'System';
+                };
+
+                $notificationHref = function ($notif) use ($guard) {
+                    if (($notif->module ?? '') === 'leave') {
+                        return isset($notif->leave_emp_id) && $guard !== 'employee'
+                            ? route('leaveStatus', $notif->leave_emp_id)
+                            : route('leaveStatus');
+                    }
+
+                    if (($notif->module ?? '') === 'pds') {
+                        if ($guard === 'employee') {
+                            return route('empPDS');
+                        }
+
+                        $menu = match ((string) $notif->category) {
+                            '1' => 'eligibility',
+                            '2' => 'work-experience',
+                            '3' => 'voluntary-work',
+                            '4' => 'learning-dev',
+                            default => 'empPDS',
+                        };
+                        $menid = $notif->pds_emp_eligi_id
+                            ?? $notif->pds_emp_workexp_id
+                            ?? $notif->pds_emp_volworks_id
+                            ?? $notif->pds_emp_learndev_id
+                            ?? 0;
+
+                        return $menu === 'empPDS'
+                            ? route('empPDS')
+                            : route('updateNotif', ['menid' => $menid, 'lappid' => $notif->lapp_id ?? 0, 'menu' => $menu]);
+                    }
+
+                    return '#';
+                };
+            @endphp
             <div x-data="{ open: false }" class="relative" @click.outside="open = false">
                 <button @click="open = !open" class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-foreground transition hover:bg-accent hover:text-accent-foreground">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
                     @if($unreadCount > 0)<span class="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">{{ $unreadCount > 9 ? '9+' : $unreadCount }}</span>@endif
                 </button>
                 <div x-show="open" x-transition class="absolute right-0 top-full mt-2 w-80 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl">
-                    <div class="flex items-center justify-between border-b border-border px-4 py-3"><h3>Notifications</h3>@if($unreadCount > 0)<span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{{ $unreadCount }} new</span>@endif</div>
-                    <div class="max-h-96 overflow-y-auto">
-                        <div class="flex flex-col items-center gap-2 p-8 text-center text-muted-foreground">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><line x1="4" y1="4" x2="20" y2="20"/></svg>
-                            <div><p class="text-sm font-medium text-foreground">No new notifications</p><p class="text-xs text-muted-foreground">You're all caught up!</p></div>
+                    <div class="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-foreground">Notifications</h3>
+                            @if($unreadCount > 0)<p class="mt-0.5 text-xs text-muted-foreground">{{ $unreadCount }} unread</p>@endif
                         </div>
+                        @if($unreadCount > 0)
+                            <form method="POST" action="{{ route('notifications.markAllRead') }}">
+                                @csrf
+                                <button type="submit" class="rounded-lg px-2 py-1 text-xs font-medium text-primary transition hover:bg-primary/10">Mark all as read</button>
+                            </form>
+                        @endif
+                    </div>
+                    <div class="max-h-96 overflow-y-auto">
+                        @forelse($notificationItems as $notif)
+                            @php
+                                $notifStatus = (int) ($notif->notifstat ?? $notif->status ?? 1);
+                                $timeDifference = $notif->notif_created_at ?? $notif->created_at
+                                    ? \Carbon\Carbon::parse($notif->notif_created_at ?? $notif->created_at)->timezone('Asia/Manila')->diffForHumans()
+                                    : '';
+                            @endphp
+                            <a href="{{ $notificationHref($notif) }}" class="flex gap-3 border-b border-border/70 px-4 py-3 text-sm no-underline transition hover:bg-muted/40">
+                                <span class="mt-1 h-2 w-2 shrink-0 rounded-full {{ $notifStatus === 0 ? 'bg-primary' : 'bg-muted-foreground/30' }}"></span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate font-medium text-foreground">{{ ucwords(strtolower($notificationName($notif))) }}</span>
+                                    <span class="mt-0.5 block text-xs text-muted-foreground">{{ $notificationTitle($notif) }}</span>
+                                    @if($timeDifference)<span class="mt-1 block text-[11px] text-muted-foreground/80">{{ $timeDifference }}</span>@endif
+                                </span>
+                            </a>
+                        @empty
+                            <div class="flex flex-col items-center gap-2 p-8 text-center text-muted-foreground">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><line x1="4" y1="4" x2="20" y2="20"/></svg>
+                                <div><p class="text-sm font-medium text-foreground">No notifications</p><p class="text-xs text-muted-foreground">You're all caught up!</p></div>
+                            </div>
+                        @endforelse
                     </div>
                 </div>
             </div>
@@ -425,7 +524,7 @@
 @if($guard === 'employee' && $authUser->dpn == 0)
 <div id="dpnModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
     <div class="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl">
-        <div class="flex items-center justify-between border-b border-border px-5 py-4"><div><h2 class="text-lg font-semibold text-foreground">Data Privacy Notice</h2><p class="mt-1 text-sm text-muted-foreground">Please read and accept to continue.</p></div></div>
+        <div class="flex items-center justify-between border-b border-border px-5 py-4"><div><h2 class="text-lg font-semibold text-foreground">Data Privacy Notice</h2><p class="mt-1 text-sm text-muted-foreground">Review how your information is collected, used, and protected before continuing.</p></div></div>
         <div class="max-h-[70vh] overflow-y-auto p-5">@include('data-privacy')</div>
         <div class="flex items-center justify-between gap-3 border-t border-border bg-muted/20 px-5 py-4">
             <span class="text-xs text-muted-foreground">&copy; {{ now()->year }} <span data-system-name>{{ $appTitle }}</span></span>

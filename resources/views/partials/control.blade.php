@@ -79,27 +79,29 @@
 
 {{-- ══ Leave ════════════════════════════════════════════════════════ --}}
 @php
-    $showLeave = $guard === 'web'
-        ? $can('leave_applications')
-        : ($can('leave_applications') && auth()->guard('employee')->user()?->emp_status == 1);
+    $showLeaveApplication = $can('leave_applications') && ($guard === 'web' || auth()->guard('employee')->user()?->emp_status == 1);
+    $showLeaveManagement = $guard === 'web' && $can('leave_credits');
+    $showLeave = $showLeaveApplication || $showLeaveManagement;
 @endphp
 @if($showLeave)
     <p class="{{ $lbl }}">Leave</p>
 
-    @if($guard === 'web')
-        {{-- route: leavesRead → /leaves/{id?} --}}
-        <a href="{{ route('leavesRead', 1) }}"
-           class="{{ $base }}{{ request()->is('leave','leave/*','leaves*') ? $on : $off }}">
-            <i class="fas fa-calendar-check {{ $ico }}"></i>
-            <span>Leave Applications</span>
-        </a>
-    @else
-        {{-- route: leavesReadEmp → /leave --}}
+    @if($showLeaveApplication)
         <a href="{{ route('leavesReadEmp') }}"
-           class="{{ $base }}{{ request()->is('leave','leave/*') ? $on : $off }}">
+           class="{{ $base }}{{ request()->routeIs('leavesReadEmp') ? $on : $off }}">
             <i class="fas fa-calendar-check {{ $ico }}"></i>
-            <span>Leave</span>
+            <span>Leave Application</span>
         </a>
+    @endif
+
+    @if($showLeaveManagement)
+        {{-- route: leavesRead → /leaves/{id?} --}}
+        <a href="{{ route('leavesRead') }}"
+           class="{{ $base }}{{ request()->routeIs('leavesRead', 'leaveStatus', 'historyRead') ? $on : $off }}">
+            <i class="fas fa-calendar-check {{ $ico }}"></i>
+            <span>Leave Management</span>
+        </a>
+        {{-- route: leavesReadEmp → /leave --}}
     @endif
 @endif
 
@@ -183,8 +185,8 @@
     @php
         $showUsers  = $can('user_management');  // route: ulist        → /user
         $showOff    = $can('office_management');// route: officeList   → /office
-        $showDeans  = $can('deans_list');       // route: deanlist     → /deans
-        $showAdmin  = $showUsers || $showOff || $showDeans;
+        $showSettings = $can('system_settings');
+        $showAdmin  = $showUsers || $showOff || $showSettings;
     @endphp
     @if($showAdmin)
         <p class="{{ $lbl }}">Administration</p>
@@ -205,11 +207,11 @@
             </a>
         @endif
 
-        @if($showDeans)
-            <a href="{{ route('deanlist') }}"
-               class="{{ $base }}{{ request()->is('deans','deans/*') ? $on : $off }}">
-                <i class="fas fa-graduation-cap {{ $ico }}"></i>
-                <span>Deans List</span>
+        @if($showSettings)
+            <a href="{{ route('settings') }}"
+               class="{{ $base }}{{ request()->is('settings','settings/*') ? $on : $off }}">
+                <i class="fas fa-sliders-h {{ $ico }}"></i>
+                <span>System Settings</span>
             </a>
         @endif
 
